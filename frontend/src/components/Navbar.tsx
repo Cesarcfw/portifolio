@@ -14,9 +14,6 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
-      {/* Linha de gradiente no topo */}
-      <div className="h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
-      
       <div className="bg-gray-950/95 backdrop-blur-md border-b border-gray-800/50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           
