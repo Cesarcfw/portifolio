@@ -132,4 +132,85 @@ async function getContributions(req, res) {
   }
 }
 
-module.exports = { getRepos, getContributions }
+async function getLanguages(req, res) {
+  try {
+    const query = `
+      query($username: String!) {
+        user(login: $username) {
+          repositories(first: 100, ownerAffiliations: OWNER, isFork: false) {
+            nodes {
+              name
+              languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
+                edges {
+                  size
+                  node {
+                    name
+                    color
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `
+
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query,
+        variables: { username: process.env.GITHUB_USERNAME }
+      })
+    })
+
+    const data = await response.json()
+
+    if (data.errors) {
+      return res.status(400).json({ error: data.errors[0].message })
+    }
+
+    const repos = data.data.user.repositories.nodes
+    const langStats = {}
+    let totalSize = 0
+
+    repos.forEach(repo => {
+      repo.languages.edges.forEach(edge => {
+        let name = edge.node.name
+        const size = edge.size
+        const color = edge.node.color
+
+        // Ignorar Batchfile
+        if (name.toLowerCase() === 'batchfile') return
+
+        // Renomear Jupyter Notebook
+        if (name === 'Jupyter Notebook') {
+          name = 'Python (Jupyter Notebook)'
+        }
+
+        if (!langStats[name]) {
+          langStats[name] = { name, color, size: 0 }
+        }
+        langStats[name].size += size
+        totalSize += size
+      })
+    })
+
+    // Calcular porcentagens e ordenar
+    const result = Object.values(langStats)
+      .map(lang => ({
+        ...lang,
+        percentage: Number(((lang.size / totalSize) * 100).toFixed(1))
+      }))
+      .sort((a, b) => b.size - a.size)
+
+    res.json(result)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar linguagens do GitHub' })
+  }
+}
+
+module.exports = { getRepos, getContributions, getLanguages }

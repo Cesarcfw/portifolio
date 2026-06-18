@@ -1,4 +1,18 @@
+import { useState, useEffect } from 'react'
+import { getGithubLanguages } from '../services/api'
+
 export default function About() {
+  const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
+
+  useEffect(() => {
+    getGithubLanguages()
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTopLanguages(data.slice(0, 5))
+        }
+      })
+      .catch(console.error)
+  }, [])
   const skills = {
     'Frontend': ['React', 'Vue.js', 'TypeScript', 'HTML', 'CSS', 'Tailwind'],
     'Backend': ['Node.js', 'Express', 'Python', 'Java'],
@@ -87,30 +101,29 @@ export default function About() {
       <section className="max-w-4xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">Linguagens mais usadas (GitHub)</h2>
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-          <div className="flex flex-col gap-4">
-            {[
-              { name: 'TypeScript', percentage: 70, color: 'bg-[#3178c6]' },
-              { name: 'JavaScript', percentage: 45, color: 'bg-[#f1e05a]' },
-              { name: 'HTML', percentage: 40, color: 'bg-[#e34c26]' },
-              { name: 'CSS', percentage: 20, color: 'bg-[#563d7c]' },
-              { name: 'PowerShell', percentage: 10, color: 'bg-[#012456]' }
-            ].map(lang => (
-              <div key={lang.name}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium text-gray-300 flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${lang.color}`} />
-                    {lang.name}
-                  </span>
+          {topLanguages.length === 0 ? (
+            <p className="text-gray-400">Carregando...</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {topLanguages.map(lang => (
+                <div key={lang.name}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-300 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: lang.color }} />
+                      {lang.name}
+                    </span>
+                    <span className="text-gray-500">{lang.percentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2">
+                    <div 
+                      className="h-2 rounded-full transition-all duration-1000" 
+                      style={{ width: `${lang.percentage}%`, backgroundColor: lang.color }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${lang.color} transition-all duration-1000`} 
-                    style={{ width: `${lang.percentage}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

@@ -26,6 +26,11 @@ export async function getGithubContributions() {
   return res.json()
 }
 
+export async function getGithubLanguages() {
+  const res = await fetch(`${BASE_URL}/github/languages`)
+  return res.json()
+}
+
 // Auth
 export async function login(email: string, password: string) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
