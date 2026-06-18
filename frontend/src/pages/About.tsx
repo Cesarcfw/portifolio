@@ -83,6 +83,37 @@ export default function About() {
         </div>
       </section>
 
+      {/* Linguagens Mais Usadas */}
+      <section className="max-w-4xl mx-auto px-6 pb-16">
+        <h2 className="text-2xl font-semibold mb-6">Linguagens mais usadas (GitHub)</h2>
+        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="flex flex-col gap-4">
+            {[
+              { name: 'TypeScript', percentage: 70, color: 'bg-[#3178c6]' },
+              { name: 'JavaScript', percentage: 45, color: 'bg-[#f1e05a]' },
+              { name: 'HTML', percentage: 40, color: 'bg-[#e34c26]' },
+              { name: 'CSS', percentage: 20, color: 'bg-[#563d7c]' },
+              { name: 'PowerShell', percentage: 10, color: 'bg-[#012456]' }
+            ].map(lang => (
+              <div key={lang.name}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-medium text-gray-300 flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${lang.color}`} />
+                    {lang.name}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${lang.color} transition-all duration-1000`} 
+                    style={{ width: `${lang.percentage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Educação */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">Educação</h2>
