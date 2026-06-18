@@ -11,7 +11,8 @@ import Admin from './pages/Admin'
 
 import ResetPassword from './pages/ResetPassword'
 
-const socket = io('http://localhost:3000')
+const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const socket = io(socketUrl)
 
 function App() {
   useEffect(() => {
