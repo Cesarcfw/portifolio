@@ -62,7 +62,7 @@ export default function Projects() {
       {/* Header */}
       <section className="max-w-5xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold mb-4">Projetos</h1>
-        <p className="text-gray-400">Projetos que desenvolvi no estágio, na faculdade e por conta própria.</p>
+        <p className="text-gray-400">Projetos desenvolvidos durante o estágio, na faculdade e por conta própria.</p>
       </section>
 
       {/* Projetos do banco */}
