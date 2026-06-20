@@ -3,7 +3,7 @@ import { getGithubLanguages, getSettings } from '../services/api'
 
 export default function About() {
   const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
-  const [resumes, setResumes] = useState<{id: number, name: string, url: string}[]>([])
+  const [resumes, setResumes] = useState<{id: number, name: string, description?: string, url: string}[]>([])
   const [resumesDescription, setResumesDescription] = useState('')
 
   useEffect(() => {
@@ -94,7 +94,8 @@ export default function About() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-200 group-hover:text-white transition-colors">{r.name}</h3>
-                      <p className="text-xs text-gray-500 group-hover:text-teal-400/70 transition-colors mt-0.5">Clique para visualizar o PDF</p>
+                      {r.description && <p className="text-sm text-gray-400 mt-1">{r.description}</p>}
+                      <p className="text-xs text-teal-500/70 group-hover:text-teal-400 transition-colors mt-2">Clique para visualizar o PDF</p>
                     </div>
                   </div>
                   <div className="text-gray-600 group-hover:text-teal-400 transition-colors">

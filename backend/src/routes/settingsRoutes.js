@@ -1,11 +1,12 @@
 const express = require('express')
 const router = express.Router()
-const { getSettings, updateSettings, uploadResume, removeResume } = require('../controllers/settingsController')
+const { getSettings, updateSettings, uploadResume, removeResume, editResume } = require('../controllers/settingsController')
 const { protect } = require('../middleware/authMiddleware')
 
 router.get('/', getSettings)
 router.put('/', protect, updateSettings)
 router.post('/resume', protect, uploadResume)
 router.delete('/resume/:id', protect, removeResume)
+router.put('/resume/:id', protect, editResume)
 
 module.exports = router

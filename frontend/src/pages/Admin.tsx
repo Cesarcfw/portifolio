@@ -36,10 +36,12 @@ export default function Admin() {
   })
   const [settingsMessage, setSettingsMessage] = useState('')
 
-  const [resumes, setResumes] = useState<{ id: number, name: string, url: string }[]>([])
+  const [resumes, setResumes] = useState<{ id: number, name: string, description?: string, url: string }[]>([])
   const [resumeName, setResumeName] = useState('')
+  const [resumeDescription, setResumeDescription] = useState('')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeMessage, setResumeMessage] = useState('')
+  const [editingResumeId, setEditingResumeId] = useState<number | null>(null)
 
   useEffect(() => {
     if (isAuthenticated) loadData()
@@ -80,17 +82,45 @@ export default function Admin() {
     const reader = new FileReader()
     reader.onloadend = async () => {
       const base64Data = reader.result as string
-      const res = await uploadResume(token!, resumeName, base64Data)
+      const res = await uploadResume(token!, resumeName, resumeDescription, base64Data)
       if (res.error) {
         setResumeMessage(res.error)
       } else {
         setResumeMessage('Currículo enviado com sucesso! Ele aparecerá no site em ~1 minuto.')
         setResumeName('')
+        setResumeDescription('')
         setResumeFile(null)
         loadData()
       }
     }
     reader.readAsDataURL(resumeFile)
+  }
+
+  async function handleSaveEditedResume(id: number) {
+    if (!resumeName) return
+    setResumeMessage('Salvando alterações...')
+    const res = await editResume(token!, id, resumeName, resumeDescription)
+    if (res.error) {
+      setResumeMessage(res.error)
+    } else {
+      setResumeMessage('Currículo atualizado com sucesso!')
+      setEditingResumeId(null)
+      setResumeName('')
+      setResumeDescription('')
+      loadData()
+    }
+  }
+
+  function startEditResume(r: { id: number, name: string, description?: string }) {
+    setEditingResumeId(r.id)
+    setResumeName(r.name)
+    setResumeDescription(r.description || '')
+  }
+
+  function cancelEditResume() {
+    setEditingResumeId(null)
+    setResumeName('')
+    setResumeDescription('')
   }
 
   async function handleDeleteResume(id: number) {
@@ -302,43 +332,102 @@ export default function Admin() {
             </button>
           </div>
           
-          <form onSubmit={handleUploadResume} className="flex flex-col md:flex-row gap-4 mb-6">
-            <input 
-              type="text" 
-              placeholder="Nome (ex: Full Stack)" 
-              value={resumeName}
-              onChange={e => setResumeName(e.target.value)}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
-              required
-            />
-            <input 
-              type="file" 
-              accept=".pdf"
-              onChange={e => setResumeFile(e.target.files?.[0] || null)}
-              className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700 cursor-pointer"
-              required
-            />
-            <button 
-              type="submit"
-              className="bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-lg text-sm font-medium transition"
-            >
-              Fazer Upload (GitHub)
-            </button>
-          </form>
+          {editingResumeId === null && (
+            <form onSubmit={handleUploadResume} className="flex flex-col md:flex-row gap-4 mb-6 items-start">
+              <div className="flex-1 flex flex-col gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Nome (ex: Full Stack)" 
+                  value={resumeName}
+                  onChange={e => setResumeName(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
+                  required
+                />
+                <input 
+                  type="text" 
+                  placeholder="Descrição (ex: Focado em tecnologias backend...)" 
+                  value={resumeDescription}
+                  onChange={e => setResumeDescription(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
+                />
+              </div>
+              <input 
+                type="file" 
+                accept=".pdf"
+                onChange={e => setResumeFile(e.target.files?.[0] || null)}
+                className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700 cursor-pointer"
+                required
+              />
+              <button 
+                type="submit"
+                className="bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap"
+              >
+                Fazer Upload
+              </button>
+            </form>
+          )}
 
           <div className="flex flex-col gap-2">
             {resumes.map(r => (
-              <div key={r.id} className="flex items-center justify-between bg-gray-800/50 border border-gray-700/50 p-3 rounded-lg">
-                <div>
-                  <span className="font-medium mr-2">{r.name}</span>
-                  <a href={r.url} target="_blank" className="text-xs text-blue-400 hover:underline">{r.url}</a>
+              <div key={r.id} className="flex flex-col md:flex-row md:items-center justify-between bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg gap-4">
+                {editingResumeId === r.id ? (
+                  <div className="flex-1 flex flex-col gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Nome do currículo" 
+                      value={resumeName}
+                      onChange={e => setResumeName(e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition" 
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Descrição (Opcional)" 
+                      value={resumeDescription}
+                      onChange={e => setResumeDescription(e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition" 
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <div className="font-medium mb-1">{r.name}</div>
+                    {r.description && <div className="text-sm text-gray-400 mb-1">{r.description}</div>}
+                    <a href={r.url} target="_blank" className="text-xs text-blue-400 hover:underline">{r.url}</a>
+                  </div>
+                )}
+
+                <div className="flex gap-3 shrink-0">
+                  {editingResumeId === r.id ? (
+                    <>
+                      <button 
+                        onClick={() => handleSaveEditedResume(r.id)}
+                        className="text-sm text-teal-400 hover:text-teal-300"
+                      >
+                        Salvar
+                      </button>
+                      <button 
+                        onClick={cancelEditResume}
+                        className="text-sm text-gray-400 hover:text-gray-300"
+                      >
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => startEditResume(r)}
+                        className="text-sm text-blue-400 hover:text-blue-300"
+                      >
+                        Editar
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteResume(r.id)}
+                        className="text-sm text-red-400 hover:text-red-300"
+                      >
+                        Remover
+                      </button>
+                    </>
+                  )}
                 </div>
-                <button 
-                  onClick={() => handleDeleteResume(r.id)}
-                  className="text-xs text-red-400 hover:text-red-300"
-                >
-                  Remover
-                </button>
               </div>
             ))}
             {resumes.length === 0 && (

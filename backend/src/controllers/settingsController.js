@@ -23,7 +23,7 @@ async function updateSettings(req, res) {
 }
 
 async function uploadResume(req, res) {
-  const { name, base64Data } = req.body
+  const { name, description, base64Data } = req.body
 
   if (!name || !base64Data) {
     return res.status(400).json({ error: 'Nome e arquivo são obrigatórios' })
@@ -78,6 +78,7 @@ async function uploadResume(req, res) {
     const newResume = {
       id: Date.now(),
       name: name,
+      description: description || '',
       url: `/${filename}` // Link relativo que a Vercel vai resolver
     }
 
@@ -95,7 +96,30 @@ async function uploadResume(req, res) {
 }
 
 async function removeResume(req, res) {
-  const { id } = req.params
+  const id = parseInt(req.params.id)
+  try {
+    const currentSettingsArray = await settingsModel.getAllSettings()
+    const resumesJson = currentSettingsArray.resumes_links || '[]'
+    let resumes = []
+    try { resumes = JSON.parse(resumesJson) } catch(e) {}
+
+    const newResumes = resumes.filter(r => r.id !== id)
+
+    await settingsModel.updateSetting('resumes_links', JSON.stringify(newResumes))
+    req.io.emit('refresh_data')
+    res.json({ message: 'Currículo removido com sucesso' })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro interno ao remover currículo' })
+  }
+}
+
+async function editResume(req, res) {
+  const id = parseInt(req.params.id)
+  const { name, description } = req.body
+
+  if (!name) {
+    return res.status(400).json({ error: 'O nome é obrigatório' })
+  }
 
   try {
     const currentSettingsArray = await settingsModel.getAllSettings()
@@ -103,16 +127,21 @@ async function removeResume(req, res) {
     let resumes = []
     try { resumes = JSON.parse(resumesJson) } catch(e) {}
 
-    const updatedResumes = resumes.filter(r => r.id !== parseInt(id))
-    
-    // Obs: não vamos deletar o arquivo do GitHub para simplificar, apenas removemos do banco
-    await settingsModel.updateSetting('resumes_links', JSON.stringify(updatedResumes))
-    req.io.emit('refresh_data')
+    const resumeIndex = resumes.findIndex(r => r.id === id)
+    if (resumeIndex === -1) {
+      return res.status(404).json({ error: 'Currículo não encontrado' })
+    }
 
-    res.json({ message: 'Currículo removido com sucesso' })
+    resumes[resumeIndex].name = name
+    resumes[resumeIndex].description = description || ''
+
+    await settingsModel.updateSetting('resumes_links', JSON.stringify(resumes))
+    req.io.emit('refresh_data')
+    
+    res.json({ message: 'Currículo atualizado com sucesso', resume: resumes[resumeIndex] })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao remover currículo' })
+    res.status(500).json({ error: 'Erro interno ao atualizar currículo' })
   }
 }
 
-module.exports = { getSettings, updateSettings, uploadResume, removeResume }
+module.exports = { getSettings, updateSettings, uploadResume, removeResume, editResume }
