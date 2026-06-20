@@ -6,6 +6,7 @@ const express = require('express')
 const http = require('http')
 const { Server } = require('socket.io')
 const cors = require('cors')
+const nodemailer = require('nodemailer')
 require('dotenv').config()
 
 const authRoutes = require('./routes/authRoutes')
@@ -44,4 +45,26 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000
 server.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`)
+
+  // Notificação de Boot
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    })
+
+    transporter.sendMail({
+      from: `"Alerta Portfólio" <${process.env.EMAIL_USER}>`,
+      to: process.env.EMAIL_USER,
+      subject: `☕ Servidor do Portfólio Acordou!`,
+      html: `
+        <h3>Servidor Online!</h3>
+        <p>O seu servidor no Render acabou de inicializar (acordou da hibernação ou foi reiniciado).</p>
+        <p><strong>Horário:</strong> ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+      `
+    }).catch(err => console.error('Erro ao enviar alerta de boot:', err))
+  }
 })

@@ -71,16 +71,24 @@ export default function Projects() {
   if (error) {
     return (
       <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="text-6xl mb-6">😴</div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-4">Servidor em hibernação...</h1>
-        <p className="text-gray-400 max-w-md mb-8">
-          Não foi possível carregar a lista de projetos porque o servidor está tirando um cochilo. Tente atualizar a página.
+        <div className="relative mb-8">
+          <div className="text-7xl animate-bounce">☕</div>
+          <div className="absolute -bottom-4 -right-4 w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        
+        <h1 className="text-3xl sm:text-4xl font-bold mb-4">
+          Estamos acordando o servidor...
+        </h1>
+        
+        <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
+          O primeiro acesso do dia leva cerca de <strong>50 segundos</strong>, pois nosso servidor estava em modo de economia de energia. Ele já está preparando o café!
         </p>
+        
         <button 
           onClick={() => window.location.reload()} 
-          className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-medium transition"
+          className="bg-blue-500 hover:bg-blue-600 px-8 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
         >
-          Acordar o servidor
+          Tentar novamente
         </button>
       </main>
     )
