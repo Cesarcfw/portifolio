@@ -42,19 +42,49 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [repos, setRepos] = useState<Repo[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     async function loadData() {
-      const [proj, rep] = await Promise.all([
-        getProjects(),
-        getGithubRepos()
-      ])
-      setProjects(proj)
-      setRepos(rep)
-      setLoading(false)
+      try {
+        const [proj, rep] = await Promise.all([
+          getProjects(),
+          getGithubRepos()
+        ])
+
+        if (proj.error || rep.error) {
+          throw new Error('API Error')
+        }
+
+        setProjects(proj || [])
+        setRepos(rep || [])
+      } catch (err) {
+        console.error("Erro ao carregar projetos:", err)
+        setError(true)
+      } finally {
+        setLoading(false)
+      }
     }
     loadData()
   }, [])
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="text-6xl mb-6">😴</div>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-4">Servidor em hibernação...</h1>
+        <p className="text-gray-400 max-w-md mb-8">
+          Não foi possível carregar a lista de projetos porque o servidor está tirando um cochilo. Tente atualizar a página.
+        </p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-medium transition"
+        >
+          Acordar o servidor
+        </button>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">

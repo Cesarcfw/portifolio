@@ -58,24 +58,55 @@ export default function Home() {
   const [contributions, setContributions] = useState<ContributionData | null>(null)
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [hoveredDay, setHoveredDay] = useState<ContributionDay | null>(null)
 
   useEffect(() => {
     async function loadData() {
-      const [proj, rep, contrib, sets] = await Promise.all([
-        getFeaturedProjects(),
-        getGithubRepos(),
-        getGithubContributions().catch(() => null),
-        getSettings().catch(() => ({}))
-      ])
-      setProjects(proj)
-      setRepos(rep)
-      setContributions(contrib)
-      setSettings(sets)
-      setLoading(false)
+      try {
+        const [proj, rep, contrib, sets] = await Promise.all([
+          getFeaturedProjects(),
+          getGithubRepos(),
+          getGithubContributions().catch(() => null),
+          getSettings().catch(() => ({}))
+        ])
+
+        // Verifica se a API retornou erro (ex: banco fora do ar)
+        if (proj.error || rep.error) {
+          throw new Error('API Error')
+        }
+
+        setProjects(proj || [])
+        setRepos(rep || [])
+        setContributions(contrib)
+        setSettings(sets || {})
+      } catch (err) {
+        console.error("Erro ao carregar dados:", err)
+        setError(true)
+      } finally {
+        setLoading(false)
+      }
     }
     loadData()
   }, [])
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="text-6xl mb-6">😴</div>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-4">O servidor está tirando um cochilo...</h1>
+        <p className="text-gray-400 max-w-md mb-8">
+          Como este é um projeto demonstrativo rodando em servidores gratuitos, o banco de dados pode estar em hibernação ou manutenção temporária.
+        </p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-medium transition"
+        >
+          Tentar acordar o servidor
+        </button>
+      </main>
+    )
+  }
 
   // Helpers para o gráfico de contribuições
   function getContributionColor(count: number): string {
