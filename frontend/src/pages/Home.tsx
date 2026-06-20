@@ -90,6 +90,15 @@ export default function Home() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        window.location.reload()
+      }, 50000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   if (error) {
     return (
       <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">

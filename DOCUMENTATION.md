@@ -56,13 +56,19 @@ O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Control
 * Sempre que há uma alteração de dados (criação/edição/remoção de Projetos ou alteração de Configurações), o controller executa `req.io.emit('refresh_data')`.
 
 ### 3.4. Recuperação de Senha (Forgot Password)
-* O sistema possui um fluxo de recuperação integrado via E-mail utilizando o `Nodemailer`.
-* O `authController` intercepta a requisição, gera um token temporário assinado e envia um link parametrizado para o e-mail do administrador.
+* O sistema possui um fluxo de recuperação integrado via E-mail utilizando a API do **Resend**.
+* O `authController` intercepta a requisição, gera um token temporário assinado e envia um link parametrizado para o e-mail do administrador, lendo a URL de origem automaticamente.
 * Ao clicar no link, o Admin acessa a tela `/admin/reset` que consome a rota de validação e altera o *hash* da senha no banco de dados.
 
 ### 3.5. Formulário de Contato (`/api/contact`)
 * Rota pública projetada para a página de contato do Frontend.
-* Recebe Nome, Email e Mensagem e utiliza a conta SMTP configurada no `.env` para enviar as mensagens diretamente para a caixa de entrada do desenvolvedor, validando os campos antes do envio.
+* Recebe Nome, Email e Mensagem e utiliza a API do **Resend** configurada no `.env` para enviar as mensagens diretamente para a caixa de entrada do desenvolvedor, validando os campos antes do envio.
+
+### 3.6. Monitoramento de Banco de Dados (Heartbeat Inteligente)
+* O `dbMonitor.js` vigia a disponibilidade do banco de dados na nuvem (Aiven) utilizando as próprias requisições de frontend dos visitantes (como a busca de projetos).
+* Se a query falhar devido à queda do banco, ele registra o estado na memória do servidor e envia imediatamente um Alerta de Falha Crítica via **Resend** para o e-mail do dono.
+* Mecanismo Anti-SPAM: e-mails de alerta não são repetidos caso vários visitantes acessem o site quebrado.
+* Quando o banco for reativado e o primeiro visitante carregar o site com sucesso, o sistema enviará um e-mail informando que o banco de dados voltou à operação normal.
 
 ---
 
@@ -73,7 +79,7 @@ O frontend é altamente componenteizado e usa Hooks nativos do React para lidar 
 ### 4.1. Estrutura de Diretórios
 * `src/App.tsx`: A raiz da árvore de componentes. Ele encapsula o sistema de roteamento (`react-router-dom`) e conecta-se ao `Socket.IO` do servidor. Escuta o evento global `refresh_data` para forçar um recarregamento da página (`window.location.reload()`).
 * `src/contexts/AuthContext.tsx`: Gerenciador de estado global para a autenticação do Admin. Mantém o token JWT na memória local (e no `localStorage`) e expõe métodos `login` e `logout`. Protege a tela de `/admin`.
-* `src/services/api.ts`: Camada centralizadora de requisições (`fetch`). Todas as chamadas (login, busca de projetos, conexão com Github, envio de configurações) estão modularizadas como funções assíncronas aqui.
+* `src/services/api.ts`: Camada centralizadora de requisições (`fetch`). Todas as chamadas (login, busca de projetos, conexão com Github, envio de configurações) estão modularizadas como funções assíncronas aqui. A URL do backend é injetada através da variável de ambiente inteligente `import.meta.env.VITE_API_URL`.
 * `src/pages/`:
   * `Home.tsx`: A página inicial. Busca simultaneamente Projetos de Destaque, Repositórios e Contribuições do GitHub, e Status Dinâmicos das configurações.
   * `About.tsx`: Uma página de currículo/sobre que exibe um dicionário estruturado de hard-skills e uma linha do tempo profissional com as experiências da carreira.

@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const nodemailer = require('nodemailer')
+const { Resend } = require('resend')
 const userModel = require('../models/userModel')
 
 /**
@@ -55,23 +55,23 @@ async function forgotPassword(req, res) {
       { expiresIn: '15m' }
     )
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    })
+    const targetEmail = process.env.MY_EMAIL || process.env.EMAIL_USER
+    if (!process.env.RESEND_API_KEY || !targetEmail) {
+      return res.status(500).json({ error: 'Serviço de e-mail não configurado' })
+    }
 
-    const resetLink = `http://localhost:5173/admin/reset?token=${token}`
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    
+    const frontendUrl = req.headers.origin || 'http://localhost:5173'
+    const resetLink = `${frontendUrl}/admin/reset?token=${token}`
 
-    await transporter.sendMail({
-      from: `"Portfólio Admin" <${process.env.EMAIL_USER}>`,
-      to: email,
+    await resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: email, // enviará para o email digitado, mas no plano gratuito deve ser igual ao registrado no Resend
       subject: 'Recuperação de Senha',
       html: `
         <h3>Recuperação de Senha</h3>
-        <p>Você solicitou a redefinição de sua senha.</p>
+        <p>Você solicitou a redefinição de sua senha do painel administrador.</p>
         <p>Clique no link abaixo para criar uma nova senha (válido por 15 minutos):</p>
         <a href="${resetLink}">${resetLink}</a>
       `

@@ -27,5 +27,16 @@ Navegue até a pasta `/frontend` e você poderá utilizar os seguintes comandos:
 
 ## 🔌 Configuração da API
 
-As chamadas de API estão apontadas para o backend local no arquivo `src/services/api.ts` através da constante `BASE_URL = 'http://localhost:3000/api'`.
-Para implantação em produção, você precisará alterar essa variável para refletir a URL de produção do seu backend.
+As chamadas de API estão apontadas dinamicamente para o backend através da variável de ambiente `VITE_API_URL`.
+
+Para rodar localmente, crie um arquivo `.env.local` na raiz da pasta `/frontend` com o seguinte conteúdo:
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+## ☁️ Deploy na Nuvem (Vercel)
+
+Este projeto foi otimizado para deploy na **Vercel**.
+1. Conecte o repositório na plataforma Vercel.
+2. Nas configurações do projeto, adicione a variável de ambiente `VITE_API_URL` apontando para o seu backend de produção (ex: `https://seu-backend.onrender.com`).
+3. A Vercel executará o comando `npm run build` automaticamente e distribuirá os arquivos estáticos globalmente em sua CDN.
