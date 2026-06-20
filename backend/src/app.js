@@ -9,6 +9,8 @@ const cors = require('cors')
 const nodemailer = require('nodemailer')
 require('dotenv').config()
 
+const pool = require('./database/connection')
+
 const authRoutes = require('./routes/authRoutes')
 const projectRoutes = require('./routes/projectRoutes')
 const githubRoutes = require('./routes/githubRoutes')
@@ -43,10 +45,10 @@ app.get('/', (req, res) => {
 })
 
 const PORT = process.env.PORT || 3000
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Servidor rodando na porta ${PORT}`)
 
-  // Notificação de Boot
+  // Notificação de Boot e Check de DB
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -56,6 +58,7 @@ server.listen(PORT, () => {
       }
     })
 
+    // 1. Avisa que o Render ligou
     transporter.sendMail({
       from: `"Alerta Portfólio" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
@@ -66,5 +69,25 @@ server.listen(PORT, () => {
         <p><strong>Horário:</strong> ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
       `
     }).catch(err => console.error('Erro ao enviar alerta de boot:', err))
+
+    // 2. Testa a Aiven
+    try {
+      await pool.query('SELECT 1')
+      console.log('Conexão com a Aiven testada com sucesso no boot.')
+    } catch (dbError) {
+      console.error('Falha ao conectar na Aiven no boot:', dbError.message)
+      transporter.sendMail({
+        from: `"Alerta Crítico" <${process.env.EMAIL_USER}>`,
+        to: process.env.EMAIL_USER,
+        subject: `🚨 BANCO AIVEN OFFLINE! Ligue o Banco de Dados`,
+        html: `
+          <h2 style="color: #d9534f;">ALERTA CRÍTICO: BANCO DE DADOS DESLIGADO</h2>
+          <p>O servidor do Render iniciou com sucesso, mas <strong>não conseguiu acessar o banco de dados na Aiven</strong>.</p>
+          <p>Isso geralmente acontece se a Aiven pausou o banco por inatividade ou manutenção.</p>
+          <p><strong>Ação Imediata:</strong> Acesse o painel da Aiven e ligue o serviço MySQL (Power On).</p>
+          <p style="color: gray; font-size: 12px;"><strong>Erro técnico:</strong> ${dbError.message}</p>
+        `
+      }).catch(err => console.error('Erro ao enviar alerta da Aiven:', err))
+    }
   }
 })
