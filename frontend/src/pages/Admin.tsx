@@ -31,7 +31,8 @@ export default function Admin() {
 
   const [settings, setSettings] = useState({
     availability_text: '',
-    job_status_text: ''
+    job_status_text: '',
+    resumes_description: ''
   })
   const [settingsMessage, setSettingsMessage] = useState('')
 
@@ -284,6 +285,22 @@ export default function Admin() {
             <h2 className="text-lg font-semibold">Gerenciar Currículos</h2>
             {resumeMessage && <span className="text-sm text-teal-400">{resumeMessage}</span>}
           </div>
+
+          <div className="mb-6">
+            <label className="block text-sm text-gray-400 mb-1">Texto explicativo da seção (Aparece na tela "Sobre")</label>
+            <textarea 
+              value={settings.resumes_description || ''}
+              onChange={e => setSettings({ ...settings, resumes_description: e.target.value })}
+              placeholder="Ex: Abaixo estão as versões do meu currículo direcionadas para diferentes vagas..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 transition resize-none h-24"
+            />
+            <button 
+              onClick={handleSaveSettings}
+              className="mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+            >
+              Salvar Texto
+            </button>
+          </div>
           
           <form onSubmit={handleUploadResume} className="flex flex-col md:flex-row gap-4 mb-6">
             <input 
@@ -325,7 +342,7 @@ export default function Admin() {
               </div>
             ))}
             {resumes.length === 0 && (
-              <p className="text-sm text-gray-500">Nenhum currículo cadastrado. O padrão (/curriculo.pdf) será usado na página Sobre.</p>
+              <p className="text-sm text-gray-500">Nenhum currículo cadastrado. Faça o upload de um "Currículo Geral" acima para começar.</p>
             )}
           </div>
         </div>

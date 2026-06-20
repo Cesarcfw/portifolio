@@ -4,6 +4,7 @@ import { getGithubLanguages, getSettings } from '../services/api'
 export default function About() {
   const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
   const [resumes, setResumes] = useState<{id: number, name: string, url: string}[]>([])
+  const [resumesDescription, setResumesDescription] = useState('')
 
   useEffect(() => {
     getGithubLanguages()
@@ -16,10 +17,15 @@ export default function About() {
 
     getSettings()
       .then(data => {
-        if (data && data.resumes_links) {
-          try {
-            setResumes(JSON.parse(data.resumes_links))
-          } catch(e) {}
+        if (data) {
+          if (data.resumes_links) {
+            try {
+              setResumes(JSON.parse(data.resumes_links))
+            } catch(e) {}
+          }
+          if (data.resumes_description) {
+            setResumesDescription(data.resumes_description)
+          }
         }
       })
       .catch(console.error)
@@ -62,32 +68,45 @@ export default function About() {
           primeira oportunidade como desenvolvedor júnior ou melhor.
         </p>
 
-        {/* Botões de Currículo com grande destaque */}
-        <div className="mt-8 pt-8 border-t border-gray-800">
-          <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest mb-4">Download de Currículo</h2>
-          <div className="flex flex-wrap gap-4">
-            {resumes.length > 0 ? (
-              resumes.map(r => (
+        {/* Currículos em Destaque */}
+        {resumes.length > 0 && (
+          <div className="mt-12 pt-10 border-t border-gray-800/50">
+            <h2 className="text-2xl font-bold mb-4">Currículos</h2>
+            {resumesDescription && (
+              <p className="text-gray-400 text-base leading-relaxed max-w-2xl mb-8">
+                {resumesDescription}
+              </p>
+            )}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {resumes.map(r => (
                 <a 
                   key={r.id} 
                   href={r.url} 
                   target="_blank" 
-                  className="flex items-center gap-2 bg-gray-900/50 hover:bg-teal-500/10 border border-gray-700 hover:border-teal-500/50 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-teal-500/10 hover:scale-105"
+                  className="group relative overflow-hidden bg-gray-900 hover:bg-teal-500/10 border border-gray-800 hover:border-teal-500/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-lg hover:shadow-teal-500/10 hover:-translate-y-1"
                 >
-                  <span className="text-xl">📄</span> {r.name}
+                  <div className="flex items-center gap-4">
+                    <div className="bg-gray-800 group-hover:bg-teal-500/20 text-teal-400 w-12 h-12 rounded-xl flex items-center justify-center transition-colors">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-200 group-hover:text-white transition-colors">{r.name}</h3>
+                      <p className="text-xs text-gray-500 group-hover:text-teal-400/70 transition-colors mt-0.5">Clique para visualizar o PDF</p>
+                    </div>
+                  </div>
+                  <div className="text-gray-600 group-hover:text-teal-400 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </div>
                 </a>
-              ))
-            ) : (
-              <a 
-                href="/curriculo.pdf" 
-                target="_blank" 
-                className="flex items-center gap-2 bg-gray-900/50 hover:bg-teal-500/10 border border-gray-700 hover:border-teal-500/50 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-teal-500/10 hover:scale-105"
-              >
-                <span className="text-xl">📄</span> Baixar currículo geral
-              </a>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* Experiência */}
