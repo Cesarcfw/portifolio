@@ -32,15 +32,16 @@ async function uploadResume(req, res) {
   try {
     // 1. Limpar a string base64 (remover 'data:application/pdf;base64,')
     const base64Content = base64Data.split(',')[1] || base64Data
-    const filename = `curriculo-${Date.now()}.pdf`
+    const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
+    const githubToken = (process.env.GITHUB_TOKEN || '').trim()
     
     // 2. Fazer o commit no GitHub (vai ativar o deploy na Vercel)
-    const githubUrl = `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/portifolio/contents/frontend/public/${filename}`
+    const githubUrl = `https://api.github.com/repos/${githubUsername}/portifolio/contents/frontend/public/${filename}`
     
     const githubResponse = await fetch(githubUrl, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+        'Authorization': `Bearer ${githubToken}`,
         'Content-Type': 'application/json',
         'Accept': 'application/vnd.github.v3+json'
       },
