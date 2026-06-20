@@ -10,6 +10,7 @@ const { Resend } = require('resend')
 require('dotenv').config()
 
 const pool = require('./database/connection')
+const dbMonitor = require('./services/dbMonitor')
 
 const authRoutes = require('./routes/authRoutes')
 const projectRoutes = require('./routes/projectRoutes')
@@ -68,20 +69,10 @@ server.listen(PORT, async () => {
     try {
       await pool.query('SELECT 1')
       console.log('Conexão com a Aiven testada com sucesso no boot.')
+      dbMonitor.notifyRecovery()
     } catch (dbError) {
       console.error('Falha ao conectar na Aiven no boot:', dbError.message)
-      resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: targetEmail,
-        subject: `🚨 BANCO AIVEN OFFLINE! Ligue o Banco de Dados`,
-        html: `
-          <h2 style="color: #d9534f;">ALERTA CRÍTICO: BANCO DE DADOS DESLIGADO</h2>
-          <p>O servidor do Render iniciou com sucesso, mas <strong>não conseguiu acessar o banco de dados na Aiven</strong>.</p>
-          <p>Isso geralmente acontece se a Aiven pausou o banco por inatividade ou manutenção.</p>
-          <p><strong>Ação Imediata:</strong> Acesse o painel da Aiven e ligue o serviço MySQL (Power On).</p>
-          <p style="color: gray; font-size: 12px;"><strong>Erro técnico:</strong> ${dbError.message}</p>
-        `
-      }).catch(err => console.error('Erro ao enviar alerta da Aiven:', err))
+      dbMonitor.notifyFailure(dbError)
     }
   }
 })

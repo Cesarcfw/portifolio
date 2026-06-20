@@ -1,4 +1,5 @@
 const projectModel = require('../models/projectModel')
+const dbMonitor = require('../services/dbMonitor')
 
 /**
  * Retorna todos os projetos cadastrados no banco.
@@ -6,8 +7,10 @@ const projectModel = require('../models/projectModel')
 async function getAll(req, res) {
   try {
     const projects = await projectModel.getAll()
+    dbMonitor.notifyRecovery()
     res.json(projects)
   } catch (err) {
+    dbMonitor.notifyFailure(err)
     res.status(500).json({ error: 'Erro ao buscar projetos' })
   }
 }
@@ -18,8 +21,10 @@ async function getAll(req, res) {
 async function getFeatured(req, res) {
   try {
     const projects = await projectModel.getFeatured()
+    dbMonitor.notifyRecovery()
     res.json(projects)
   } catch (err) {
+    dbMonitor.notifyFailure(err)
     res.status(500).json({ error: 'Erro ao buscar projetos em destaque' })
   }
 }
