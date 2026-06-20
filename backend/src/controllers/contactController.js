@@ -10,6 +10,7 @@ async function sendMessage(req, res) {
   try {
     const targetEmail = process.env.MY_EMAIL || process.env.EMAIL_USER
     if (!process.env.RESEND_API_KEY || !targetEmail) {
+      console.log('ERRO DE ENV: RESEND_API_KEY existe?', !!process.env.RESEND_API_KEY, '| targetEmail existe?', !!targetEmail)
       return res.status(500).json({ error: 'Serviço de e-mail não configurado no servidor' })
     }
 
@@ -35,6 +36,7 @@ async function sendMessage(req, res) {
 
     res.json({ message: 'Mensagem enviada!' })
   } catch (err) {
+    console.error('ERRO CATASTRÓFICO NO RESEND:', err)
     res.status(500).json({ error: 'Erro ao enviar mensagem' })
   }
 }
