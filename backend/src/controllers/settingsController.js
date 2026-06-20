@@ -40,7 +40,7 @@ async function uploadResume(req, res) {
     const githubResponse = await fetch(githubUrl, {
       method: 'PUT',
       headers: {
-        'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
         'Content-Type': 'application/json',
         'Accept': 'application/vnd.github.v3+json'
       },
@@ -54,7 +54,9 @@ async function uploadResume(req, res) {
     if (!githubResponse.ok) {
       const errorData = await githubResponse.json()
       console.error('Erro GitHub:', errorData)
-      return res.status(500).json({ error: 'Erro ao fazer upload no GitHub' })
+      return res.status(githubResponse.status).json({ 
+        error: `Erro no GitHub: ${errorData.message || 'Token inválido ou sem permissão'}` 
+      })
     }
 
     // 3. Atualizar o banco de dados (settings)
