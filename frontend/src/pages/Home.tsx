@@ -96,15 +96,14 @@ export default function Home() {
         <div className="relative mb-8 flex justify-center">
           {/* 
             ============== TROCAR A ANIMAÇÃO AQUI ==============
-            Quando você criar o seu próprio GIF em pixel art, basta
-            trocar o link abaixo dentro do 'src="..."' pelo link da sua imagem.
-            Você pode hospedar o seu GIF no Imgur ou no próprio GitHub!
+            Quando você quiser trocar a animação, basta alterar
+            o link abaixo dentro do 'src="..."' pelo link da sua imagem.
             ====================================================
           */}
           <img 
-            src="https://media.tenor.com/tZ2X1-7e8iEAAAAC/coffee-pixel.gif" 
+            src="https://media.tenor.com/lcDEp7V0E6wAAAAC/cryptoadz-coffee-time.gif" 
             alt="Servidor Acordando" 
-            className="w-32 h-32 rounded-xl object-cover shadow-lg"
+            className="w-32 h-32 rounded-xl object-cover shadow-lg pixelated"
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
