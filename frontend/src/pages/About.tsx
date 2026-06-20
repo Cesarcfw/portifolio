@@ -1,14 +1,25 @@
 import { useState, useEffect } from 'react'
-import { getGithubLanguages } from '../services/api'
+import { getGithubLanguages, getSettings } from '../services/api'
 
 export default function About() {
   const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
+  const [resumes, setResumes] = useState<{id: number, name: string, url: string}[]>([])
 
   useEffect(() => {
     getGithubLanguages()
       .then(data => {
         if (Array.isArray(data)) {
           setTopLanguages(data.slice(0, 5))
+        }
+      })
+      .catch(console.error)
+
+    getSettings()
+      .then(data => {
+        if (data && data.resumes_links) {
+          try {
+            setResumes(JSON.parse(data.resumes_links))
+          } catch(e) {}
         }
       })
       .catch(console.error)
@@ -50,6 +61,33 @@ export default function About() {
           desenvolvimento de sistemas, automações e infraestrutura. Busco minha
           primeira oportunidade como desenvolvedor júnior ou melhor.
         </p>
+
+        {/* Botões de Currículo com grande destaque */}
+        <div className="mt-8 pt-8 border-t border-gray-800">
+          <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest mb-4">Download de Currículo</h2>
+          <div className="flex flex-wrap gap-4">
+            {resumes.length > 0 ? (
+              resumes.map(r => (
+                <a 
+                  key={r.id} 
+                  href={r.url} 
+                  target="_blank" 
+                  className="flex items-center gap-2 bg-gray-900/50 hover:bg-teal-500/10 border border-gray-700 hover:border-teal-500/50 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-teal-500/10 hover:scale-105"
+                >
+                  <span className="text-xl">📄</span> {r.name}
+                </a>
+              ))
+            ) : (
+              <a 
+                href="/curriculo.pdf" 
+                target="_blank" 
+                className="flex items-center gap-2 bg-gray-900/50 hover:bg-teal-500/10 border border-gray-700 hover:border-teal-500/50 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-teal-500/10 hover:scale-105"
+              >
+                <span className="text-xl">📄</span> Baixar currículo geral
+              </a>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Experiência */}
@@ -141,12 +179,7 @@ export default function About() {
         </div>  
       </section>
 
-{/* Download currículo */}
-<section className="max-w-4xl mx-auto px-6 pb-16">
-  <a href="/curriculo.pdf" download className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-medium transition">
-    Baixar currículo
-  </a>
-</section>
+{/* Download currículo antigo foi movido para o Header com mais destaque */}
 
     </main>
   )

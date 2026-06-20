@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { login as loginApi, getProjects, forgotPassword, getSettings, updateSettings } from '../services/api'
+import { login as loginApi, getProjects, forgotPassword, getSettings, updateSettings, uploadResume, removeResume } from '../services/api'
 
 interface Project {
   id: number
@@ -35,6 +35,11 @@ export default function Admin() {
   })
   const [settingsMessage, setSettingsMessage] = useState('')
 
+  const [resumes, setResumes] = useState<{ id: number, name: string, url: string }[]>([])
+  const [resumeName, setResumeName] = useState('')
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [resumeMessage, setResumeMessage] = useState('')
+
   useEffect(() => {
     if (isAuthenticated) loadData()
   }, [isAuthenticated])
@@ -46,6 +51,11 @@ export default function Admin() {
     ])
     setProjects(projData)
     setSettings(settsData)
+    try {
+      if (settsData.resumes_links) {
+        setResumes(JSON.parse(settsData.resumes_links))
+      }
+    } catch(e) {}
   }
 
   async function handleSaveSettings() {
@@ -57,6 +67,35 @@ export default function Admin() {
     } catch {
       setSettingsMessage('Erro ao salvar')
     }
+  }
+
+  async function handleUploadResume(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resumeName || !resumeFile) return
+
+    setResumeMessage('Enviando para o GitHub (pode demorar)...')
+    
+    // Ler o arquivo como Base64
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      const base64Data = reader.result as string
+      const res = await uploadResume(token!, resumeName, base64Data)
+      if (res.error) {
+        setResumeMessage(res.error)
+      } else {
+        setResumeMessage('Currículo enviado com sucesso! Ele aparecerá no site em ~1 minuto.')
+        setResumeName('')
+        setResumeFile(null)
+        loadData()
+      }
+    }
+    reader.readAsDataURL(resumeFile)
+  }
+
+  async function handleDeleteResume(id: number) {
+    if (!confirm('Remover currículo? (Isso não apaga o arquivo do GitHub, apenas remove o link do site)')) return
+    await removeResume(token!, id)
+    loadData()
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -237,6 +276,58 @@ export default function Admin() {
           >
             Salvar Configurações
           </button>
+        </div>
+
+        {/* Currículos */}
+        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Gerenciar Currículos</h2>
+            {resumeMessage && <span className="text-sm text-teal-400">{resumeMessage}</span>}
+          </div>
+          
+          <form onSubmit={handleUploadResume} className="flex flex-col md:flex-row gap-4 mb-6">
+            <input 
+              type="text" 
+              placeholder="Nome (ex: Full Stack)" 
+              value={resumeName}
+              onChange={e => setResumeName(e.target.value)}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
+              required
+            />
+            <input 
+              type="file" 
+              accept=".pdf"
+              onChange={e => setResumeFile(e.target.files?.[0] || null)}
+              className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700 cursor-pointer"
+              required
+            />
+            <button 
+              type="submit"
+              className="bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-lg text-sm font-medium transition"
+            >
+              Fazer Upload (GitHub)
+            </button>
+          </form>
+
+          <div className="flex flex-col gap-2">
+            {resumes.map(r => (
+              <div key={r.id} className="flex items-center justify-between bg-gray-800/50 border border-gray-700/50 p-3 rounded-lg">
+                <div>
+                  <span className="font-medium mr-2">{r.name}</span>
+                  <a href={r.url} target="_blank" className="text-xs text-blue-400 hover:underline">{r.url}</a>
+                </div>
+                <button 
+                  onClick={() => handleDeleteResume(r.id)}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  Remover
+                </button>
+              </div>
+            ))}
+            {resumes.length === 0 && (
+              <p className="text-sm text-gray-500">Nenhum currículo cadastrado. O padrão (/curriculo.pdf) será usado na página Sobre.</p>
+            )}
+          </div>
         </div>
 
         {/* Botão novo projeto */}

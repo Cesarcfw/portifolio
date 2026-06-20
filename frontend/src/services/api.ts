@@ -76,3 +76,25 @@ export async function updateSettings(token: string, settings: Record<string, str
   })
   return res.json()
 }
+
+export async function uploadResume(token: string, name: string, base64Data: string) {
+  const res = await fetch(`${BASE_URL}/settings/resume`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ name, base64Data })
+  })
+  return res.json()
+}
+
+export async function removeResume(token: string, id: number) {
+  const res = await fetch(`${BASE_URL}/settings/resume/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+  return res.json()
+}
