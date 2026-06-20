@@ -65,17 +65,22 @@ async function forgotPassword(req, res) {
     const frontendUrl = req.headers.origin || 'http://localhost:5173'
     const resetLink = `${frontendUrl}/admin/reset?token=${token}`
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: 'onboarding@resend.dev',
-      to: email, // enviará para o email digitado, mas no plano gratuito deve ser igual ao registrado no Resend
+      to: targetEmail, // Força enviar para o e-mail do dono da conta, evitando bloqueio do Resend free
       subject: 'Recuperação de Senha',
-      html: `
+      html: \`
         <h3>Recuperação de Senha</h3>
-        <p>Você solicitou a redefinição de sua senha do painel administrador.</p>
+        <p>Você solicitou a redefinição de sua senha do painel administrador para o usuário: \${user.email}</p>
         <p>Clique no link abaixo para criar uma nova senha (válido por 15 minutos):</p>
-        <a href="${resetLink}">${resetLink}</a>
-      `
+        <a href="\${resetLink}">\${resetLink}</a>
+      \`
     })
+
+    if (error) {
+      console.error('Erro Resend:', error)
+      return res.status(500).json({ error: 'Falha do provedor ao enviar e-mail' })
+    }
 
     res.json({ message: 'E-mail de recuperação enviado!' })
   } catch (err) {

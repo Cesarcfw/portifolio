@@ -53,7 +53,12 @@ async function uploadResume(req, res) {
     })
 
     if (!githubResponse.ok) {
-      const errorData = await githubResponse.json()
+      let errorData;
+      try {
+        errorData = await githubResponse.json()
+      } catch(e) {
+        throw new Error(`GitHub retornou HTTP ${githubResponse.status} mas não era JSON.`)
+      }
       console.error('Erro GitHub:', errorData)
       return res.status(githubResponse.status).json({ 
         error: `Erro no GitHub: ${errorData.message || 'Token inválido ou sem permissão'}` 
@@ -84,7 +89,7 @@ async function uploadResume(req, res) {
     res.json({ message: 'Currículo adicionado com sucesso', resume: newResume })
   } catch (err) {
     console.error('Erro no uploadResume:', err)
-    res.status(500).json({ error: 'Erro interno ao adicionar currículo' })
+    res.status(500).json({ error: `Erro interno: ${err.message}` })
   }
 }
 
