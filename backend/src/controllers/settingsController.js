@@ -34,6 +34,7 @@ async function uploadResume(req, res) {
     const base64Content = base64Data.split(',')[1] || base64Data
     const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
     const githubToken = (process.env.GITHUB_TOKEN || '').trim()
+    const filename = `curriculo-${Date.now()}.pdf`
     
     // 2. Fazer o commit no GitHub (vai ativar o deploy na Vercel)
     const githubUrl = `https://api.github.com/repos/${githubUsername}/portifolio/contents/frontend/public/${filename}`
