@@ -93,9 +93,39 @@ export default function Home() {
   if (error) {
     return (
       <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="relative mb-8">
-          <div className="text-7xl animate-bounce">☕</div>
-          <div className="absolute -bottom-4 -right-4 w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="relative mb-8 flex justify-center">
+          <svg width="120" height="120" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ imageRendering: 'pixelated' }}>
+            <style>
+              {`
+                @keyframes floatSteam {
+                  0% { transform: translateY(0); opacity: 0; }
+                  50% { opacity: 1; }
+                  100% { transform: translateY(-4px); opacity: 0; }
+                }
+                .steam-1 { animation: floatSteam 2s infinite ease-in; }
+                .steam-2 { animation: floatSteam 2.5s infinite ease-in 0.5s; }
+                .steam-3 { animation: floatSteam 2.2s infinite ease-in 1s; }
+              `}
+            </style>
+            {/* Steam */}
+            <rect x="5" y="3" width="1" height="2" fill="#9CA3AF" className="steam-1"/>
+            <rect x="8" y="2" width="1" height="2" fill="#9CA3AF" className="steam-2"/>
+            <rect x="11" y="4" width="1" height="2" fill="#9CA3AF" className="steam-3"/>
+            
+            {/* Cup Body */}
+            <path d="M4 7h8v6H4V7z" fill="#3B82F6"/>
+            <path d="M5 13h6v1H5v-1z" fill="#3B82F6"/>
+            
+            {/* Handle */}
+            <path d="M12 8h2v4h-2V8z" fill="#3B82F6"/>
+            <path d="M13 9h1v2h-1V9z" fill="#030712"/>
+            
+            {/* Coffee top */}
+            <path d="M4 6h8v1H4V6z" fill="#451A03"/>
+            
+            {/* Highlight */}
+            <path d="M5 7h1v5H5V7z" fill="#60A5FA"/>
+          </svg>
         </div>
         
         <h1 className="text-3xl sm:text-4xl font-bold mb-4">
