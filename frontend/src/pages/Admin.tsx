@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { login as loginApi, getProjects, forgotPassword, getSettings, updateSettings, uploadResume, removeResume } from '../services/api'
+import { login as loginApi, getProjects, forgotPassword, getSettings, updateSettings, uploadResume, removeResume, editResume } from '../services/api'
 
 interface Project {
   id: number
