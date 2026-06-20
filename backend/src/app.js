@@ -6,7 +6,7 @@ const express = require('express')
 const http = require('http')
 const { Server } = require('socket.io')
 const cors = require('cors')
-const nodemailer = require('nodemailer')
+const { Resend } = require('resend')
 require('dotenv').config()
 
 const pool = require('./database/connection')
@@ -48,20 +48,14 @@ const PORT = process.env.PORT || 3000
 server.listen(PORT, async () => {
   console.log(`Servidor rodando na porta ${PORT}`)
 
-  // Notificação de Boot e Check de DB
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    })
+  const targetEmail = process.env.MY_EMAIL || process.env.EMAIL_USER
+  if (process.env.RESEND_API_KEY && targetEmail) {
+    const resend = new Resend(process.env.RESEND_API_KEY)
 
     // 1. Avisa que o Render ligou
-    transporter.sendMail({
-      from: `"Alerta Portfólio" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER,
+    resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: targetEmail,
       subject: `☕ Servidor do Portfólio Acordou!`,
       html: `
         <h3>Servidor Online!</h3>
@@ -76,9 +70,9 @@ server.listen(PORT, async () => {
       console.log('Conexão com a Aiven testada com sucesso no boot.')
     } catch (dbError) {
       console.error('Falha ao conectar na Aiven no boot:', dbError.message)
-      transporter.sendMail({
-        from: `"Alerta Crítico" <${process.env.EMAIL_USER}>`,
-        to: process.env.EMAIL_USER,
+      resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: targetEmail,
         subject: `🚨 BANCO AIVEN OFFLINE! Ligue o Banco de Dados`,
         html: `
           <h2 style="color: #d9534f;">ALERTA CRÍTICO: BANCO DE DADOS DESLIGADO</h2>
