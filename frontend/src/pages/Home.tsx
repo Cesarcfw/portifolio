@@ -221,10 +221,14 @@ export default function Home() {
       Node.js · Vue.js · React · MySQL · Node-RED
     </div>
 
-    <div className="flex gap-4 justify-center">
+    <div className="flex flex-wrap gap-4 justify-center">
       <a href="/projetos"
         className="relative bg-blue-500 hover:bg-teal-400 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40">
         Ver projetos
+      </a>
+      <a href="/sobre#curriculos"
+        className="relative bg-teal-500 hover:bg-blue-500 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg shadow-teal-500/25 hover:shadow-blue-500/40">
+        Currículos
       </a>
       <a href="/sobre"
         className="relative border border-gray-700 hover:border-blue-500/50 bg-gray-900/50 backdrop-blur-sm px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:text-teal-400">

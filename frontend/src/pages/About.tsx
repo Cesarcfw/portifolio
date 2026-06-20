@@ -70,7 +70,7 @@ export default function About() {
 
         {/* Currículos em Destaque */}
         {resumes.length > 0 && (
-          <div className="mt-12 pt-10 border-t border-gray-800/50">
+          <div id="curriculos" className="mt-12 pt-10 border-t border-gray-800/50">
             <h2 className="text-2xl font-bold mb-4">Currículos</h2>
             {resumesDescription && (
               <p className="text-gray-400 text-base leading-relaxed max-w-2xl mb-8">
