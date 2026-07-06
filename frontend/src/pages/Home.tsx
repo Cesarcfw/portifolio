@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getFeaturedProjects, getGithubRepos, getGithubContributions, getSettings } from '../services/api'
+import { getFeaturedProjects, getGithubRepos, getGithubContributions, getSettings, getGithubVersion } from '../services/api'
 
 interface Project {
   id: number
@@ -60,15 +60,17 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [hoveredDay, setHoveredDay] = useState<ContributionDay | null>(null)
+  const [siteVersion, setSiteVersion] = useState<string>('')
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [proj, rep, contrib, sets] = await Promise.all([
+        const [proj, rep, contrib, sets, ver] = await Promise.all([
           getFeaturedProjects(),
           getGithubRepos(),
           getGithubContributions().catch(() => null),
-          getSettings().catch(() => ({}))
+          getSettings().catch(() => ({})),
+          getGithubVersion().catch(() => ({ version: '' }))
         ])
 
         // Verifica se a API retornou erro (ex: banco fora do ar)
@@ -80,6 +82,9 @@ export default function Home() {
         setRepos(rep || [])
         setContributions(contrib)
         setSettings(sets || {})
+        if (ver && ver.version) {
+          setSiteVersion(ver.version)
+        }
       } catch (err) {
         console.error("Erro ao carregar dados:", err)
         setError(true)
@@ -461,6 +466,17 @@ export default function Home() {
     </div>
   )}
 </section>
+
+      {/* Footer / Versão */}
+      <footer className="max-w-5xl mx-auto px-6 py-8 border-t border-gray-900 flex justify-between items-center text-xs text-gray-500">
+        <p>© {new Date().getFullYear()} César. Todos os direitos reservados.</p>
+        {siteVersion && (
+          <p className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse" />
+            Versão: <span className="font-semibold text-gray-400">{siteVersion}</span>
+          </p>
+        )}
+      </footer>
 
     </main>
   )

@@ -213,4 +213,51 @@ async function getLanguages(req, res) {
   }
 }
 
-module.exports = { getRepos, getContributions, getLanguages }
+async function getPortfolioVersion(req, res) {
+  try {
+    const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
+    const githubToken = (process.env.GITHUB_TOKEN || '').trim()
+
+    // 1. Tenta buscar a release mais recente
+    const response = await fetch(
+      `https://api.github.com/repos/${githubUsername}/portifolio/releases/latest`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      }
+    )
+
+    if (response.ok) {
+      const release = await response.json()
+      return res.json({ version: release.tag_name })
+    }
+
+    // 2. Fallback: Se não houver release, busca o último commit
+    const commitResponse = await fetch(
+      `https://api.github.com/repos/${githubUsername}/portifolio/commits?per_page=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      }
+    )
+
+    if (commitResponse.ok) {
+      const commits = await commitResponse.json()
+      if (commits && commits.length > 0) {
+        const sha = commits[0].sha.substring(0, 7)
+        return res.json({ version: `sha-${sha}` })
+      }
+    }
+
+    res.json({ version: 'v1.0.0' })
+  } catch (err) {
+    console.error('Erro ao buscar versão do portfólio:', err)
+    res.json({ version: 'v1.0.0' })
+  }
+}
+
+module.exports = { getRepos, getContributions, getLanguages, getPortfolioVersion }
