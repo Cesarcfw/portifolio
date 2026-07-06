@@ -39,7 +39,7 @@ export default function Navbar() {
             <span className="text-white font-semibold text-sm sm:text-base flex items-center gap-2">
               Portfólio profissional <span className="text-teal-400">Dev</span>
               {version && (
-                <span className="text-[10px] font-normal bg-gray-800 text-teal-400 border border-gray-700 px-1.5 py-0.5 rounded-full scale-90 sm:scale-100">
+                <span className="text-[10px] font-normal bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full scale-90 sm:scale-100">
                   {version}
                 </span>
               )}
