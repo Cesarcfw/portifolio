@@ -20,12 +20,38 @@ interface Experience {
   order_index?: number
 }
 
-const defaultSkills: Record<string, string[]> = {
-  'Frontend': ['React', 'Vue.js', 'TypeScript', 'HTML', 'CSS', 'Tailwind'],
-  'Backend': ['Node.js', 'Express', 'Python', 'Java'],
-  'Banco de dados': ['MySQL', 'SQL'],
-  'Ferramentas': ['Git', 'Node-RED', 'Make', 'Docker', 'WordPress'],
-  'Infraestrutura': ['Ubuntu Server', 'Apache', 'PM2', 'Cloudflare'],
+const defaultSkills: Record<string, { name: string, color: string }[]> = {
+  'Frontend': [
+    { name: 'React', color: '#61dafb' },
+    { name: 'Vue.js', color: '#4fc08d' },
+    { name: 'TypeScript', color: '#3178c6' },
+    { name: 'HTML', color: '#e34c26' },
+    { name: 'CSS', color: '#264de4' },
+    { name: 'Tailwind', color: '#38bdf8' }
+  ],
+  'Backend': [
+    { name: 'Node.js', color: '#339933' },
+    { name: 'Express', color: '#828282' },
+    { name: 'Python', color: '#3776ab' },
+    { name: 'Java', color: '#007396' }
+  ],
+  'Banco de dados': [
+    { name: 'MySQL', color: '#00758f' },
+    { name: 'SQL', color: '#f29111' }
+  ],
+  'Ferramentas': [
+    { name: 'Git', color: '#f05032' },
+    { name: 'Node-RED', color: '#8f0000' },
+    { name: 'Make', color: '#6c63ff' },
+    { name: 'Docker', color: '#2496ed' },
+    { name: 'WordPress', color: '#21759b' }
+  ],
+  'Infraestrutura': [
+    { name: 'Ubuntu Server', color: '#e95420' },
+    { name: 'Apache', color: '#d22128' },
+    { name: 'PM2', color: '#2b037a' },
+    { name: 'Cloudflare', color: '#f38020' }
+  ],
 }
 
 const defaultExperiences: Experience[] = [
@@ -106,14 +132,14 @@ export default function About() {
   }, [])
 
   // Group skills dynamically
-  const displayedSkills: Record<string, string[]> = {}
+  const displayedSkills: Record<string, { name: string, color: string }[]> = {}
   if (skills.length > 0) {
     skills.forEach(s => {
       const cat = s.category
       if (!displayedSkills[cat]) {
         displayedSkills[cat] = []
       }
-      displayedSkills[cat].push(s.name)
+      displayedSkills[cat].push({ name: s.name, color: s.color })
     })
   } else {
     Object.assign(displayedSkills, defaultSkills)
@@ -224,8 +250,9 @@ export default function About() {
               <h3 className="text-sm font-medium text-teal-400 mb-3">{category}</h3>
               <div className="flex flex-wrap gap-2">
                 {items.map(skill => (
-                  <span key={skill} className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-full">
-                    {skill}
+                  <span key={skill.name} className="bg-gray-800/50 border border-gray-700/60 text-gray-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 hover:border-teal-500/50 transition-colors duration-200">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: skill.color || '#00f0ff' }} />
+                    {skill.name}
                   </span>
                 ))}
               </div>

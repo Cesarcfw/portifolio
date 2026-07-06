@@ -745,20 +745,34 @@ export default function Admin() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
-              <div className="flex gap-2 items-end">
+              <div className="flex gap-3 items-end md:col-span-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Cor Hex (Opcional)</label>
-                  <input 
-                    type="text" 
-                    placeholder="#00f0ff"
-                    value={skillForm.color}
-                    onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
-                  />
+                  <label className="block text-xs text-gray-400 mb-1">Cor Hex & Preview</label>
+                  <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 h-10">
+                    <input 
+                      type="color" 
+                      value={skillForm.color || '#00f0ff'} 
+                      onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
+                      className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="#00f0ff"
+                      value={skillForm.color}
+                      onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
+                      className="bg-transparent text-white focus:outline-none text-sm w-20"
+                    />
+                    <div className="flex-1 flex justify-end">
+                      <div className="flex items-center gap-1.5 bg-gray-900 px-2.5 py-1 rounded-full border border-gray-800">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: skillForm.color || '#00f0ff' }} />
+                        <span className="text-[10px] text-gray-400 font-semibold">{skillForm.name || 'Preview'}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="submit"
-                  className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0 h-9"
+                  className="bg-teal-500 hover:bg-teal-600 px-5 py-2.5 rounded-lg text-sm font-semibold transition shrink-0 h-10"
                 >
                   {editingSkill ? 'Salvar' : 'Adicionar'}
                 </button>

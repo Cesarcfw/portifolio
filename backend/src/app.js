@@ -107,6 +107,83 @@ server.listen(PORT, async () => {
         )
       `)
       console.log('Auto-migrações concluídas no boot.')
+
+      // Seeding das tabelas se vazias
+      const [skillsCount] = await pool.query('SELECT COUNT(*) as count FROM skills')
+      if (skillsCount[0].count === 0) {
+        console.log('Seeding default skills...')
+        const defaultSkillsSeed = [
+          { name: 'React', category: 'Frontend', level: 90, color: '#61dafb' },
+          { name: 'Vue.js', category: 'Frontend', level: 85, color: '#4fc08d' },
+          { name: 'TypeScript', category: 'Frontend', level: 85, color: '#3178c6' },
+          { name: 'HTML', category: 'Frontend', level: 95, color: '#e34c26' },
+          { name: 'CSS', category: 'Frontend', level: 90, color: '#264de4' },
+          { name: 'Tailwind', category: 'Frontend', level: 90, color: '#38bdf8' },
+          { name: 'Node.js', category: 'Backend', level: 85, color: '#339933' },
+          { name: 'Express', category: 'Backend', level: 85, color: '#828282' },
+          { name: 'Python', category: 'Backend', level: 80, color: '#3776ab' },
+          { name: 'Java', category: 'Backend', level: 70, color: '#007396' },
+          { name: 'MySQL', category: 'Banco de dados', level: 85, color: '#00758f' },
+          { name: 'SQL', category: 'Banco de dados', level: 85, color: '#f29111' },
+          { name: 'Git', category: 'Ferramentas', level: 85, color: '#f05032' },
+          { name: 'Node-RED', category: 'Ferramentas', level: 90, color: '#8f0000' },
+          { name: 'Make', category: 'Ferramentas', level: 80, color: '#6c63ff' },
+          { name: 'Docker', category: 'Ferramentas', level: 75, color: '#2496ed' },
+          { name: 'WordPress', category: 'Ferramentas', level: 85, color: '#21759b' },
+          { name: 'Ubuntu Server', category: 'Infraestrutura', level: 80, color: '#e95420' },
+          { name: 'Apache', category: 'Infraestrutura', level: 75, color: '#d22128' },
+          { name: 'PM2', category: 'Infraestrutura', level: 80, color: '#2b037a' },
+          { name: 'Cloudflare', category: 'Infraestrutura', level: 80, color: '#f38020' }
+        ]
+        for (const skill of defaultSkillsSeed) {
+          await pool.query(
+            'INSERT INTO skills (name, category, level, color) VALUES (?, ?, ?, ?)',
+            [skill.name, skill.category, skill.level, skill.color]
+          )
+        }
+        console.log('Skills semeadas com sucesso!')
+      }
+
+      const [experiencesCount] = await pool.query('SELECT COUNT(*) as count FROM experiences')
+      if (experiencesCount[0].count === 0) {
+        console.log('Seeding default experiences...')
+        const defaultExpSeed = [
+          {
+            company: 'MTEC Energia',
+            role: 'Jovem Aprendiz',
+            period: '2024 - 2025',
+            description: 'Desenvolvimento de sistemas Full Stack, análise de dados, construção e manutenção de site.',
+            techs: 'Node-RED, Vue.js, Node.js, MySQL, Wordpress, JavaScript, Elementor, Ubuntu Server, Cloudflare SSL, Apache, PM2',
+            type: 'work',
+            order_index: 0
+          },
+          {
+            company: 'MTEC Energia',
+            role: 'Estagiário de TI',
+            period: '2025 - Atualmente',
+            description: 'Desenvolvimento de sistemas Full Stack, automações, análise de dados, suporte de TI, construção e manutenção de site.',
+            techs: 'Node-RED, Vue.js, Node.js, MySQL, Make, Wordpress, JavaScript, Elementor, Ubuntu Server, Bitrix24 CRM, Apache, PM2',
+            type: 'work',
+            order_index: 1
+          },
+          {
+            company: 'Centro de Ensino Universitário do Distrito Federal (UDF)',
+            role: 'Ciência da Computação',
+            period: 'Conclusão prevista: 12/2026',
+            description: '',
+            techs: '',
+            type: 'education',
+            order_index: 0
+          }
+        ]
+        for (const exp of defaultExpSeed) {
+          await pool.query(
+            'INSERT INTO experiences (company, role, period, description, techs, type, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [exp.company, exp.role, exp.period, exp.description, exp.techs, exp.type, exp.order_index]
+          )
+        }
+        console.log('Experiências semeadas com sucesso!')
+      }
     } catch (dbError) {
       console.error('Falha ao conectar na Aiven no boot:', dbError.message)
       dbMonitor.notifyFailure(dbError)
