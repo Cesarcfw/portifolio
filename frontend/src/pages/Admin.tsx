@@ -716,7 +716,7 @@ export default function Admin() {
                   placeholder="Ex: React, Node.js"
                   value={skillForm.name}
                   onChange={e => setSkillForm({ ...skillForm, name: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -725,7 +725,7 @@ export default function Admin() {
                 <select
                   value={skillForm.category}
                   onChange={e => setSkillForm({ ...skillForm, category: e.target.value })}
-                  className="w-full bg-gray-855 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
                   <option value="Frontend">Frontend</option>
                   <option value="Backend">Backend</option>
@@ -735,30 +735,45 @@ export default function Admin() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Proficiência (%)</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="100"
+                <label className="block text-xs text-gray-400 mb-1">Nível de Proficiência (SEO/ATS)</label>
+                <select
                   value={skillForm.level}
-                  onChange={e => setSkillForm({ ...skillForm, level: parseInt(e.target.value) || 80 })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
-                />
+                  onChange={e => setSkillForm({ ...skillForm, level: parseInt(e.target.value) || 90 })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition h-10"
+                >
+                  <option value={90}>Avançado / Especialista</option>
+                  <option value={70}>Intermediário</option>
+                  <option value={50}>Iniciante / Básico</option>
+                </select>
               </div>
-              <div className="flex gap-2 items-end">
+              <div className="flex gap-3 items-end md:col-span-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Cor Hex (Opcional)</label>
-                  <input 
-                    type="text" 
-                    placeholder="#00f0ff"
-                    value={skillForm.color}
-                    onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
-                    className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
-                  />
+                  <label className="block text-xs text-gray-400 mb-1">Cor Hex & Preview</label>
+                  <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 h-10">
+                    <input 
+                      type="color" 
+                      value={skillForm.color || '#00f0ff'} 
+                      onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
+                      className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="#00f0ff"
+                      value={skillForm.color}
+                      onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
+                      className="bg-transparent text-white focus:outline-none text-sm w-20"
+                    />
+                    <div className="flex-1 flex justify-end">
+                      <div className="flex items-center gap-1.5 bg-gray-900 px-2.5 py-1 rounded-full border border-gray-800">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: skillForm.color || '#00f0ff' }} />
+                        <span className="text-[10px] text-gray-400 font-semibold">{skillForm.name || 'Preview'}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="submit"
-                  className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0 h-9"
+                  className="bg-teal-500 hover:bg-teal-600 px-5 py-2.5 rounded-lg text-sm font-semibold transition shrink-0 h-10"
                 >
                   {editingSkill ? 'Salvar' : 'Adicionar'}
                 </button>
@@ -773,10 +788,10 @@ export default function Admin() {
                     <h3 className="text-sm font-bold text-teal-400 mb-3">{cat}</h3>
                     <div className="flex flex-col gap-2">
                       {filtered.map(s => (
-                        <div key={s.id} className="flex justify-between items-center bg-gray-850 p-2.5 rounded-lg border border-gray-700/50">
+                        <div key={s.id} className="flex justify-between items-center bg-gray-800 p-2.5 rounded-lg border border-gray-700/50">
                           <span className="text-sm font-medium flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-                            {s.name} <span className="text-xs text-gray-500">({s.level}%)</span>
+                            {s.name} <span className="text-xs text-gray-500">({s.level >= 90 ? 'Avançado' : s.level >= 70 ? 'Intermediário' : 'Iniciante'})</span>
                           </span>
                           <div className="flex gap-2">
                             <button onClick={() => startEditSkill(s)} className="text-xs text-blue-400 hover:underline">Editar</button>
@@ -812,7 +827,7 @@ export default function Admin() {
                   placeholder="Ex: MTEC Energia, Faculdade UDF"
                   value={experienceForm.company}
                   onChange={e => setExperienceForm({ ...experienceForm, company: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -823,7 +838,7 @@ export default function Admin() {
                   placeholder="Ex: Estagiário de TI, Bacharelado"
                   value={experienceForm.role}
                   onChange={e => setExperienceForm({ ...experienceForm, role: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -834,7 +849,7 @@ export default function Admin() {
                   placeholder="Ex: 2025 - Atualmente, Conclusão: 12/2026"
                   value={experienceForm.period}
                   onChange={e => setExperienceForm({ ...experienceForm, period: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -843,7 +858,7 @@ export default function Admin() {
                 <select
                   value={experienceForm.type}
                   onChange={e => setExperienceForm({ ...experienceForm, type: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
                   <option value="work">💼 Experiência Profissional</option>
                   <option value="education">🎓 Educação / Acadêmico</option>
@@ -856,7 +871,7 @@ export default function Admin() {
                   placeholder="Ex: React, Node.js, Cloudflare, Ubuntu Server"
                   value={experienceForm.techs}
                   onChange={e => setExperienceForm({ ...experienceForm, techs: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
               <div className="md:col-span-2">
@@ -866,7 +881,7 @@ export default function Admin() {
                   value={experienceForm.description}
                   onChange={e => setExperienceForm({ ...experienceForm, description: e.target.value })}
                   rows={3}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
                 />
               </div>
               <div>
@@ -875,7 +890,7 @@ export default function Admin() {
                   type="number" 
                   value={experienceForm.order_index}
                   onChange={e => setExperienceForm({ ...experienceForm, order_index: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
               <div className="flex justify-end items-end">

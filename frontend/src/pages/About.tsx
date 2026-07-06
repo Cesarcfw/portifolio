@@ -20,12 +20,38 @@ interface Experience {
   order_index?: number
 }
 
-const defaultSkills: Record<string, string[]> = {
-  'Frontend': ['React', 'Vue.js', 'TypeScript', 'HTML', 'CSS', 'Tailwind'],
-  'Backend': ['Node.js', 'Express', 'Python', 'Java'],
-  'Banco de dados': ['MySQL', 'SQL'],
-  'Ferramentas': ['Git', 'Node-RED', 'Make', 'Docker', 'WordPress'],
-  'Infraestrutura': ['Ubuntu Server', 'Apache', 'PM2', 'Cloudflare'],
+const defaultSkills: Record<string, { name: string, color: string, level: number }[]> = {
+  'Frontend': [
+    { name: 'React', color: '#61dafb', level: 90 },
+    { name: 'Vue.js', color: '#4fc08d', level: 85 },
+    { name: 'TypeScript', color: '#3178c6', level: 85 },
+    { name: 'HTML', color: '#e34c26', level: 95 },
+    { name: 'CSS', color: '#264de4', level: 90 },
+    { name: 'Tailwind', color: '#38bdf8', level: 90 }
+  ],
+  'Backend': [
+    { name: 'Node.js', color: '#339933', level: 85 },
+    { name: 'Express', color: '#828282', level: 85 },
+    { name: 'Python', color: '#3776ab', level: 80 },
+    { name: 'Java', color: '#007396', level: 70 }
+  ],
+  'Banco de dados': [
+    { name: 'MySQL', color: '#00758f', level: 85 },
+    { name: 'SQL', color: '#f29111', level: 85 }
+  ],
+  'Ferramentas': [
+    { name: 'Git', color: '#f05032', level: 85 },
+    { name: 'Node-RED', color: '#8f0000', level: 90 },
+    { name: 'Make', color: '#6c63ff', level: 80 },
+    { name: 'Docker', color: '#2496ed', level: 75 },
+    { name: 'WordPress', color: '#21759b', level: 85 }
+  ],
+  'Infraestrutura': [
+    { name: 'Ubuntu Server', color: '#e95420', level: 80 },
+    { name: 'Apache', color: '#d22128', level: 75 },
+    { name: 'PM2', color: '#2b037a', level: 80 },
+    { name: 'Cloudflare', color: '#f38020', level: 80 }
+  ],
 }
 
 const defaultExperiences: Experience[] = [
@@ -105,15 +131,22 @@ export default function About() {
       .catch(console.error)
   }, [])
 
+  // Helper for levels
+  const getLevelLabel = (level: number) => {
+    if (level >= 90) return 'Avançado'
+    if (level >= 70) return 'Intermediário'
+    return 'Iniciante'
+  }
+
   // Group skills dynamically
-  const displayedSkills: Record<string, string[]> = {}
+  const displayedSkills: Record<string, { name: string, color: string, level: number }[]> = {}
   if (skills.length > 0) {
     skills.forEach(s => {
       const cat = s.category
       if (!displayedSkills[cat]) {
         displayedSkills[cat] = []
       }
-      displayedSkills[cat].push(s.name)
+      displayedSkills[cat].push({ name: s.name, color: s.color, level: s.level })
     })
   } else {
     Object.assign(displayedSkills, defaultSkills)
@@ -224,8 +257,14 @@ export default function About() {
               <h3 className="text-sm font-medium text-teal-400 mb-3">{category}</h3>
               <div className="flex flex-wrap gap-2">
                 {items.map(skill => (
-                  <span key={skill} className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-full">
-                    {skill}
+                  <span 
+                    key={skill.name} 
+                    title={`Nível: ${getLevelLabel(skill.level)}`}
+                    className="bg-gray-800/50 border border-gray-700/60 text-gray-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 hover:border-teal-500/50 transition-colors duration-200 cursor-help"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: skill.color || '#00f0ff' }} />
+                    {skill.name}
+                    <span className="sr-only">({getLevelLabel(skill.level)})</span>
                   </span>
                 ))}
               </div>
