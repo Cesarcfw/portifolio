@@ -462,6 +462,11 @@ export default function Home() {
   )}
 </section>
 
+      {/* Footer */}
+      <footer className="max-w-5xl mx-auto px-6 py-8 border-t border-gray-900 flex justify-between items-center text-xs text-gray-500">
+        <p>© {new Date().getFullYear()} César. Todos os direitos reservados.</p>
+      </footer>
+
     </main>
   )
 }

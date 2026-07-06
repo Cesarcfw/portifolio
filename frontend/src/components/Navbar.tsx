@@ -1,9 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { getGithubVersion } from '../services/api'
 
 export default function Navbar() {
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    getGithubVersion()
+      .then(data => {
+        if (data && data.version) {
+          setVersion(data.version)
+        }
+      })
+      .catch(console.error)
+  }, [])
 
   const links = [
     { path: '/',         label: 'Home' },
@@ -24,8 +36,13 @@ export default function Navbar() {
               alt="Logo" 
               className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform" 
             />
-            <span className="text-white font-semibold text-sm sm:text-base">
+            <span className="text-white font-semibold text-sm sm:text-base flex items-center gap-2">
               Portfólio profissional <span className="text-teal-400">Dev</span>
+              {version && (
+                <span className="text-[10px] font-normal bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full scale-90 sm:scale-100">
+                  {version}
+                </span>
+              )}
             </span>
           </Link>
 
