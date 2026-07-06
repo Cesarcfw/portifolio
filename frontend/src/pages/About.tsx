@@ -1,10 +1,68 @@
 import { useState, useEffect } from 'react'
-import { getGithubLanguages, getSettings } from '../services/api'
+import { getGithubLanguages, getSettings, getSkills, getExperiences } from '../services/api'
+
+interface Skill {
+  id: number
+  name: string
+  category: string
+  level: number
+  color: string
+}
+
+interface Experience {
+  id?: number
+  company: string
+  role: string
+  period: string
+  description?: string
+  techs?: string
+  type: string
+  order_index?: number
+}
+
+const defaultSkills: Record<string, string[]> = {
+  'Frontend': ['React', 'Vue.js', 'TypeScript', 'HTML', 'CSS', 'Tailwind'],
+  'Backend': ['Node.js', 'Express', 'Python', 'Java'],
+  'Banco de dados': ['MySQL', 'SQL'],
+  'Ferramentas': ['Git', 'Node-RED', 'Make', 'Docker', 'WordPress'],
+  'Infraestrutura': ['Ubuntu Server', 'Apache', 'PM2', 'Cloudflare'],
+}
+
+const defaultExperiences: Experience[] = [
+  {
+    role: 'Jovem Aprendiz',
+    company: 'MTEC Energia',
+    period: '2024 - 2025',
+    description: 'Desenvolvimento de sistemas Full Stack, análise de dados, construção e manutenção de site.',
+    techs: 'Node-RED, Vue.js, Node.js, MySQL, Wordpress, JavaScript, Elementor, Ubuntu Server, Cloudflare SSL, Apache, PM2',
+    type: 'work'
+  },
+  {
+    role: 'Estagiário de TI',
+    company: 'MTEC Energia',
+    period: '2025 - Atualmente',
+    description: 'Desenvolvimento de sistemas Full Stack, automações, análise de dados, suporte de TI, construção e manutenção de site.',
+    techs: 'Node-RED, Vue.js, Node.js, MySQL, Make, Wordpress, JavaScript, Elementor, Ubuntu Server, Bitrix24 CRM, Apache, PM2',
+    type: 'work'
+  }
+]
+
+const defaultEducation: Experience[] = [
+  {
+    role: 'Ciência da Computação',
+    company: 'Centro de Ensino Universitário do Distrito Federal (UDF)',
+    period: 'Conclusão prevista: 12/2026',
+    description: '',
+    type: 'education'
+  }
+]
 
 export default function About() {
   const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
   const [resumes, setResumes] = useState<{id: number, name: string, description?: string, url: string}[]>([])
   const [resumesDescription, setResumesDescription] = useState('')
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [experiences, setExperiences] = useState<Experience[]>([])
 
   useEffect(() => {
     getGithubLanguages()
@@ -29,31 +87,45 @@ export default function About() {
         }
       })
       .catch(console.error)
+
+    getSkills()
+      .then(data => {
+        if (Array.isArray(data)) {
+          setSkills(data)
+        }
+      })
+      .catch(console.error)
+
+    getExperiences()
+      .then(data => {
+        if (Array.isArray(data)) {
+          setExperiences(data)
+        }
+      })
+      .catch(console.error)
   }, [])
-  const skills = {
-    'Frontend': ['React', 'Vue.js', 'TypeScript', 'HTML', 'CSS', 'Tailwind'],
-    'Backend': ['Node.js', 'Express', 'Python', 'Java'],
-    'Banco de dados': ['MySQL', 'SQL'],
-    'Ferramentas': ['Git', 'Node-RED', 'Make', 'Docker', 'WordPress'],
-    'Infraestrutura': ['Ubuntu Server', 'Apache', 'PM2', 'Cloudflare'],
+
+  // Group skills dynamically
+  const displayedSkills: Record<string, string[]> = {}
+  if (skills.length > 0) {
+    skills.forEach(s => {
+      const cat = s.category
+      if (!displayedSkills[cat]) {
+        displayedSkills[cat] = []
+      }
+      displayedSkills[cat].push(s.name)
+    })
+  } else {
+    Object.assign(displayedSkills, defaultSkills)
   }
 
-  const experiences = [
-    {
-      role: 'Jovem Aprendiz',
-      company: 'MTEC Energia',
-      period: '2024 - 2025',
-      description: 'Desenvolvimento de sistemas Full Stack, análise de dados, construção e manutenção de site.',
-      techs: ['Node-RED', 'Vue.js', 'Node.js', 'MySQL', 'Wordpress', 'JavaScript', 'Elementor', 'Ubuntu Server', 'Cloudflare SSL' , 'Apache', 'PM2']
-    },
-    {
-      role: 'Estagiário de TI',
-      company: 'MTEC Energia',
-      period: '2025 - Atualmente',
-      description: 'Desenvolvimento de sistemas Full Stack, automações, análise de dados, suporte de TI, construção e manutenção de site.',
-      techs: ['Node-RED', 'Vue.js', 'Node.js', 'MySQL', 'Make', 'Wordpress', 'JavaScript', 'Elementor', 'Ubuntu Server', 'Bitrix24 CRM', 'Apache', 'PM2']
-    }
-  ]
+  const workExperiences = experiences.length > 0
+    ? experiences.filter(e => e.type === 'work')
+    : defaultExperiences
+
+  const educationExperiences = experiences.length > 0
+    ? experiences.filter(e => e.type === 'education')
+    : defaultEducation
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -114,25 +186,32 @@ export default function About() {
       <section className="max-w-4xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">Experiência</h2>
         <div className="flex flex-col gap-4">
-          {experiences.map((exp, i) => (
-            <div key={i} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="text-lg font-semibold">{exp.role}</h3>
-                  <p className="text-teal-400 text-sm">{exp.company}</p>
+          {workExperiences.map((exp, i) => {
+            const techList = typeof exp.techs === 'string'
+              ? exp.techs.split(',').map(t => t.trim()).filter(Boolean)
+              : [];
+            return (
+              <div key={exp.id || i} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="text-lg font-semibold">{exp.role}</h3>
+                    <p className="text-teal-400 text-sm">{exp.company}</p>
+                  </div>
+                  <span className="text-gray-500 text-sm">{exp.period}</span>
                 </div>
-                <span className="text-gray-500 text-sm">{exp.period}</span>
+                {exp.description && <p className="text-gray-400 text-sm mb-4">{exp.description}</p>}
+                {techList.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {techList.map(tech => (
+                      <span key={tech} className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-full">
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="text-gray-400 text-sm mb-4">{exp.description}</p>
-              <div className="flex flex-wrap gap-2">
-                {exp.techs.map(tech => (
-                  <span key={tech} className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-full">
-                    {tech}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -140,7 +219,7 @@ export default function About() {
       <section className="max-w-4xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">Habilidades</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Object.entries(skills).map(([category, items]) => (
+          {Object.entries(displayedSkills).map(([category, items]) => (
             <div key={category} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
               <h3 className="text-sm font-medium text-teal-400 mb-3">{category}</h3>
               <div className="flex flex-wrap gap-2">
@@ -188,19 +267,21 @@ export default function About() {
       {/* Educação */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">Educação</h2>
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Ciência da Computação</h3>
-              <p className="text-teal-400 text-sm">Centro de Ensino Universitário do Distrito Federal (UDF)</p>
+        <div className="flex flex-col gap-4">
+          {educationExperiences.map((edu, i) => (
+            <div key={edu.id || i} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{edu.role}</h3>
+                  <p className="text-teal-400 text-sm">{edu.company}</p>
+                </div>
+                <span className="text-gray-500 text-sm">{edu.period}</span>
+              </div>
+              {edu.description && <p className="text-gray-400 text-sm mt-3">{edu.description}</p>}
             </div>
-            <span className="text-gray-500 text-sm">Conclusão prevista: 12/2026</span>
-          </div>
+          ))}
         </div>  
       </section>
-
-{/* Download currículo antigo foi movido para o Header com mais destaque */}
-
     </main>
   )
 }

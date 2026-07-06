@@ -17,6 +17,8 @@ const projectRoutes = require('./routes/projectRoutes')
 const githubRoutes = require('./routes/githubRoutes')
 const contactRoutes = require('./routes/contactRoutes')
 const settingsRoutes = require('./routes/settingsRoutes')
+const skillsRoutes = require('./routes/skillsRoutes')
+const experienceRoutes = require('./routes/experienceRoutes')
 
 const app = express()
 app.set('trust proxy', 1)
@@ -41,6 +43,8 @@ app.use('/api/projects', projectRoutes)
 app.use('/api/github', githubRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/skills', skillsRoutes)
+app.use('/api/experiences', experienceRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'API do portfólio funcionando!' })
@@ -66,11 +70,43 @@ server.listen(PORT, async () => {
       `
     }).catch(err => console.error('Erro ao enviar alerta de boot:', err))
 
-    // 2. Testa a Aiven
+    // 2. Testa a Aiven e roda auto-migrações
     try {
       await pool.query('SELECT 1')
       console.log('Conexão com a Aiven testada com sucesso no boot.')
       dbMonitor.notifyRecovery()
+
+      // Auto-migração das tabelas adicionais
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+          setting_key   VARCHAR(100) PRIMARY KEY,
+          setting_value TEXT
+        )
+      `)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS skills (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          name        VARCHAR(50) NOT NULL,
+          category    VARCHAR(50) NOT NULL,
+          level       INT DEFAULT 80,
+          color       VARCHAR(20) DEFAULT '#00f0ff',
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS experiences (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          company     VARCHAR(100) NOT NULL,
+          role        VARCHAR(100) NOT NULL,
+          period      VARCHAR(50) NOT NULL,
+          description TEXT,
+          techs       VARCHAR(255) DEFAULT '',
+          type        VARCHAR(20) DEFAULT 'work',
+          order_index INT DEFAULT 0,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `)
+      console.log('Auto-migrações concluídas no boot.')
     } catch (dbError) {
       console.error('Falha ao conectar na Aiven no boot:', dbError.message)
       dbMonitor.notifyFailure(dbError)

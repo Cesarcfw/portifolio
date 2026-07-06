@@ -211,9 +211,11 @@ export default function Home() {
     </h1>
 
     <p className="text-base sm:text-xl text-gray-400 max-w-xl mx-auto mb-4">
-      Desenvolvedor{' '}
-      <span className="text-white font-medium">Full Stack</span>
-      {' '}focado em automação, sistemas e experiências digitais eficientes.
+      {settings.about_me_text || (
+        <>
+          Desenvolvedor <span className="text-white font-medium">Full Stack</span> focado em automação, sistemas e experiências digitais eficientes.
+        </>
+      )}
     </p>
 
     <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-10">
@@ -318,7 +320,7 @@ export default function Home() {
       <span className="bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">{contributions.total}</span>{' '}
       contribuições no último ano
     </h2>
-    <a href="https://github.com/Cesarcfw" target="_blank"
+    <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
       className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
       Ver perfil →
     </a>
@@ -409,7 +411,7 @@ export default function Home() {
   </div>
   <div className="flex items-center justify-between mb-10">
     <h2 className="text-3xl font-bold">Repositórios</h2>
-    <a href="https://github.com/Cesarcfw" target="_blank"
+    <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
       className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
       Ver todos →
     </a>
