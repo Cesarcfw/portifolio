@@ -22,4 +22,9 @@ async function updatePassword(email, passwordHash) {
   )
 }
 
-module.exports = { findByEmail, create, updatePassword }
+async function countUsers() {
+  const [rows] = await pool.query('SELECT COUNT(*) as count FROM users')
+  return rows[0].count
+}
+
+module.exports = { findByEmail, create, updatePassword, countUsers }

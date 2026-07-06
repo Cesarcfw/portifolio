@@ -9,6 +9,11 @@ const userModel = require('../models/userModel')
 async function register(req, res) {
   const { email, password } = req.body
   try {
+    const count = await userModel.countUsers()
+    if (count > 0) {
+      return res.status(403).json({ error: 'O registro de novos administradores está desativado.' })
+    }
+
     const existing = await userModel.findByEmail(email)
     if (existing) return res.status(400).json({ error: 'Email já cadastrado' })
 
