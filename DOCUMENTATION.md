@@ -37,19 +37,22 @@ A modelagem de dados foi dividida em três domínios centrais:
 O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Controller), sem a camada View, pois quem renderiza as visualizações é o Frontend.
 
 ### 3.1. Estrutura de Diretórios
-* `src/app.js`: Ponto de entrada. Configura o Express, CORS, integra o `http.createServer` com o `Socket.IO` e registra todas as rotas da API. Um middleware injeta o servidor WebSocket (`req.io`) em todas as requisições.
+* `src/app.js`: Ponto de entrada. Configura o Express (incluindo o suporte a `trust proxy` para rate limiting por IP atrás de proxy reverso), CORS, integra o `http.createServer` com o `Socket.IO` e registra todas as rotas da API. Um middleware injeta o servidor WebSocket (`req.io`) em todas as requisições.
 * `src/database/connection.js`: Estabelece o pool de conexões com o MySQL através do módulo `mysql2/promise`.
 * `src/models/`: Responsáveis pelas queries SQL nativas. Isolam o acesso ao banco.
   * `projectModel.js`, `userModel.js`, `settingsModel.js`.
 * `src/controllers/`: Contêm as regras de negócio. Eles processam o corpo (body) da requisição, chamam os `models` adequados e disparam os eventos via `req.io.emit`.
 * `src/routes/`: Mapeiam URLs e verbos HTTP (GET, POST, PUT, DELETE) para as funções específicas nos `controllers`.
 * `src/middleware/authMiddleware.js`: Intercepta rotas privadas verificando a presença e a validade de um JSON Web Token (JWT).
+* `src/middleware/rateLimiter.js`: Middleware que define limitadores de requisições (`express-rate-limit`) para proteger rotas contra spams e ataques de força bruta.
 
-### 3.2. Fluxo de Autenticação (Login)
-1. O cliente envia `email` e `password` para `POST /api/auth/login`.
-2. O `authController` busca o usuário pelo e-mail no banco.
-3. Se existir, usa o `bcrypt.compare` para bater a senha enviada em texto puro com o *hash* salvo.
-4. Se válido, gera um token JWT (assinado via `JWT_SECRET`) válido por 8 horas e o retorna.
+### 3.2. Fluxo de Autenticação (Login e Registro)
+1. **Registro Administrativo:** A rota `POST /api/auth/register` é protegida por um mecanismo de bloqueio (Bootstrap Lock). O sistema conta os usuários existentes; se já houver pelo menos 1 administrador no banco de dados, novas tentativas de registro serão rejeitadas com `403 Forbidden`. Isso evita que invasores criem contas extras em produção.
+2. **Fluxo de Login:**
+   * O cliente envia `email` e `password` para `POST /api/auth/login`.
+   * O `authController` busca o usuário pelo e-mail no banco.
+   * Se existir, usa o `bcrypt.compare` para bater a senha enviada em texto puro com o *hash* salvo.
+   * Se válido, gera um token JWT (assinado via `JWT_SECRET`) válido por 8 horas e o retorna.
 
 ### 3.3. WebSockets (Socket.IO)
 * O servidor Node.js escuta eventos WebSocket na mesma porta da API.
@@ -60,9 +63,10 @@ O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Control
 * O `authController` intercepta a requisição, gera um token temporário assinado e envia um link parametrizado para o e-mail do administrador, lendo a URL de origem automaticamente.
 * Ao clicar no link, o Admin acessa a tela `/admin/reset` que consome a rota de validação e altera o *hash* da senha no banco de dados.
 
-### 3.5. Formulário de Contato (`/api/contact`)
-* Rota pública projetada para a página de contato do Frontend.
+### 3.5. Formulário de Contato e Rate Limiting
+* Rota pública projetada para a página de contato do Frontend (`POST /api/contact`).
 * Recebe Nome, Email e Mensagem e utiliza a API do **Resend** configurada no `.env` para enviar as mensagens diretamente para a caixa de entrada do desenvolvedor, validando os campos antes do envio.
+* **Proteção Anti-Abuso (Rate Limiting):** A rota de contato é protegida por limite de requisição (máximo de 5 envios por hora por IP) e a rota de login/senha também é limitada (máximo de 10 tentativas a cada 15 minutos por IP) para impedir spams e brute force.
 
 ### 3.6. Monitoramento de Banco de Dados (Heartbeat Inteligente)
 * O `dbMonitor.js` vigia a disponibilidade do banco de dados na nuvem (Aiven) utilizando as próprias requisições de frontend dos visitantes (como a busca de projetos).
@@ -82,16 +86,17 @@ O frontend é altamente componenteizado e usa Hooks nativos do React para lidar 
 * `src/services/api.ts`: Camada centralizadora de requisições (`fetch`). Todas as chamadas (login, busca de projetos, conexão com Github, envio de configurações) estão modularizadas como funções assíncronas aqui. A URL do backend é injetada através da variável de ambiente inteligente `import.meta.env.VITE_API_URL`.
 * `src/pages/`:
   * `Home.tsx`: A página inicial. Busca simultaneamente Projetos de Destaque, Repositórios e Contribuições do GitHub, e Status Dinâmicos das configurações.
-  * `About.tsx`: Uma página de currículo/sobre que exibe um dicionário estruturado de hard-skills e uma linha do tempo profissional com as experiências da carreira.
+  * `About.tsx`: Uma página de currículo/sobre que exibe um dicionário estruturado de habilidades, linha do tempo profissional e uma seção dinâmica de currículos (gerenciados pelo administrador com descrições individuais e layouts modernos de pílulas de download).
   * `Projects.tsx`: Traz a lista exaustiva de todos os projetos cadastrados.
-  * `Contact.tsx`: Apresenta o formulário interativo de contato e invoca a API do `Nodemailer`.
-  * `Admin.tsx`: Um painel (dashboard) com duas interfaces. Se não autenticado, mostra o formulário de login e link de "Esqueci a senha". Se autenticado, mostra a tabela de edição de projetos (CRUD) e as configurações de status do perfil com seletores dropdown.
+  * `Contact.tsx`: Apresenta o formulário interativo de contato.
+  * `Admin.tsx`: Um painel (dashboard) com duas interfaces. Se não autenticado, mostra o formulário de login e link de "Esqueci a senha" (agora com desconexão automática após expiração do token JWT). Se autenticado, mostra o gerenciador de projetos (CRUD), configurações de status e o gerenciador de currículos (com suporte para upload direto ao GitHub, exclusão e edição de nomes/descrições em tempo real).
   * `ResetPassword.tsx`: Tela que captura o token da URL enviado por e-mail e apresenta o formulário de nova senha.
-* `src/components/Navbar.tsx`: Menu superior fixo para navegação.
+* `src/components/Navbar.tsx`: Menu superior fixo para navegação, contendo o indicador dinâmico da versão atual do portfólio (pill badge verde-água).
 
-### 4.2. Integração Externa (GitHub)
+### 4.2. Integração Externa e Controle de Versão (GitHub)
 O backend atua como um proxy (intermediário) para o GitHub:
 * O `githubController.js` utiliza um Token de Acesso Pessoal para bater na API GraphQL e na API REST do GitHub, formatando os dados de dias e quantidade de commits para entregar perfeitamente mastigado para o frontend, que plota o *heatmap* dinâmico.
+* **Exibição da Versão do Site:** O backend fornece a rota `/api/github/version`, que busca a última *release* do repositório do portfólio no GitHub (ou o SHA curto do último commit como fallback). A versão é exibida de forma global e estilizada no cabeçalho (`Navbar.tsx`) ao lado do logo "Dev".
 
 ---
 
