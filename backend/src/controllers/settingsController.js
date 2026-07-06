@@ -37,7 +37,7 @@ async function uploadResume(req, res) {
     const filename = `curriculo-${Date.now()}.pdf`
     
     // 2. Fazer o commit no GitHub (vai ativar o deploy na Vercel)
-    const githubUrl = `https://api.github.com/repos/${githubUsername}/portifolio/contents/frontend/public/${filename}`
+    const githubUrl = `https://api.github.com/repos/${githubUsername}/portifolio/contents/frontend/public/curriculos/${filename}`
     
     const githubResponse = await fetch(githubUrl, {
       method: 'PUT',
@@ -79,7 +79,7 @@ async function uploadResume(req, res) {
       id: Date.now(),
       name: name,
       description: description || '',
-      url: `/${filename}` // Link relativo que a Vercel vai resolver
+      url: `/curriculos/${filename}` // Link relativo que a Vercel vai resolver
     }
 
     resumes.push(newResume)
