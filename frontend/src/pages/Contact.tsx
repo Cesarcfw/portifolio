@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getSettings } from '../services/api'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [settings, setSettings] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    getSettings()
+      .then(setSettings)
+      .catch(console.error)
+  }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -39,15 +47,15 @@ export default function Contact() {
 
         {/* Links */}
         <div className="flex gap-6 mb-10">
-          <a href="https://www.linkedin.com/in/cesarcfw/" target="_blank"
+          <a href={settings.linkedin_url || "https://www.linkedin.com/in/cesarcfw/"} target="_blank"
             className="text-teal-400 hover:text-blue-300 transition text-sm">
             LinkedIn →
           </a>
-          <a href="https://github.com/Cesarcfw" target="_blank"
+          <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
             className="text-teal-400 hover:text-blue-300 transition text-sm">
             GitHub →
           </a>
-          <a href="mailto:cesarcfwmaluf@gmail.com"
+          <a href={`mailto:${settings.contact_email || "cesarcfwmaluf@gmail.com"}`}
             className="text-teal-400 hover:text-blue-300 transition text-sm">
             E-mail →
           </a>

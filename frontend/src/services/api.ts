@@ -115,3 +115,83 @@ export async function removeResume(token: string, id: number) {
   })
   return res.json()
 }
+
+// Skills
+export async function getSkills() {
+  const res = await fetch(`${BASE_URL}/skills`)
+  return res.json()
+}
+
+export async function createSkill(token: string, data: { name: string, category: string, level?: number, color?: string }) {
+  const res = await fetch(`${BASE_URL}/skills`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  })
+  return res.json()
+}
+
+export async function updateSkill(token: string, id: number, data: { name: string, category: string, level?: number, color?: string }) {
+  const res = await fetch(`${BASE_URL}/skills/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  })
+  return res.json()
+}
+
+export async function removeSkill(token: string, id: number) {
+  const res = await fetch(`${BASE_URL}/skills/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+  return res.json()
+}
+
+// Experiences
+export async function getExperiences() {
+  const res = await fetch(`${BASE_URL}/experiences`)
+  return res.json()
+}
+
+export async function createExperience(token: string, data: { company: string, role: string, period: string, description?: string, type?: string, order_index?: number }) {
+  const res = await fetch(`${BASE_URL}/experiences`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  })
+  return res.json()
+}
+
+export async function updateExperience(token: string, id: number, data: { company: string, role: string, period: string, description?: string, type?: string, order_index?: number }) {
+  const res = await fetch(`${BASE_URL}/experiences/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  })
+  return res.json()
+}
+
+export async function removeExperience(token: string, id: number) {
+  const res = await fetch(`${BASE_URL}/experiences/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+  return res.json()
+}
