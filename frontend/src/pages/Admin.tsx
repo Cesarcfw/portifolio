@@ -716,7 +716,7 @@ export default function Admin() {
                   placeholder="Ex: React, Node.js"
                   value={skillForm.name}
                   onChange={e => setSkillForm({ ...skillForm, name: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -725,7 +725,7 @@ export default function Admin() {
                 <select
                   value={skillForm.category}
                   onChange={e => setSkillForm({ ...skillForm, category: e.target.value })}
-                  className="w-full bg-gray-855 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
                   <option value="Frontend">Frontend</option>
                   <option value="Backend">Backend</option>
@@ -742,7 +742,7 @@ export default function Admin() {
                   max="100"
                   value={skillForm.level}
                   onChange={e => setSkillForm({ ...skillForm, level: parseInt(e.target.value) || 80 })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
               <div className="flex gap-2 items-end">
@@ -753,7 +753,7 @@ export default function Admin() {
                     placeholder="#00f0ff"
                     value={skillForm.color}
                     onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
-                    className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   />
                 </div>
                 <button
@@ -773,7 +773,7 @@ export default function Admin() {
                     <h3 className="text-sm font-bold text-teal-400 mb-3">{cat}</h3>
                     <div className="flex flex-col gap-2">
                       {filtered.map(s => (
-                        <div key={s.id} className="flex justify-between items-center bg-gray-850 p-2.5 rounded-lg border border-gray-700/50">
+                        <div key={s.id} className="flex justify-between items-center bg-gray-800 p-2.5 rounded-lg border border-gray-700/50">
                           <span className="text-sm font-medium flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
                             {s.name} <span className="text-xs text-gray-500">({s.level}%)</span>
@@ -812,7 +812,7 @@ export default function Admin() {
                   placeholder="Ex: MTEC Energia, Faculdade UDF"
                   value={experienceForm.company}
                   onChange={e => setExperienceForm({ ...experienceForm, company: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -823,7 +823,7 @@ export default function Admin() {
                   placeholder="Ex: Estagiário de TI, Bacharelado"
                   value={experienceForm.role}
                   onChange={e => setExperienceForm({ ...experienceForm, role: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -834,7 +834,7 @@ export default function Admin() {
                   placeholder="Ex: 2025 - Atualmente, Conclusão: 12/2026"
                   value={experienceForm.period}
                   onChange={e => setExperienceForm({ ...experienceForm, period: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
               </div>
@@ -843,7 +843,7 @@ export default function Admin() {
                 <select
                   value={experienceForm.type}
                   onChange={e => setExperienceForm({ ...experienceForm, type: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
                   <option value="work">💼 Experiência Profissional</option>
                   <option value="education">🎓 Educação / Acadêmico</option>
@@ -856,7 +856,7 @@ export default function Admin() {
                   placeholder="Ex: React, Node.js, Cloudflare, Ubuntu Server"
                   value={experienceForm.techs}
                   onChange={e => setExperienceForm({ ...experienceForm, techs: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
               <div className="md:col-span-2">
@@ -866,7 +866,7 @@ export default function Admin() {
                   value={experienceForm.description}
                   onChange={e => setExperienceForm({ ...experienceForm, description: e.target.value })}
                   rows={3}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
                 />
               </div>
               <div>
@@ -875,7 +875,7 @@ export default function Admin() {
                   type="number" 
                   value={experienceForm.order_index}
                   onChange={e => setExperienceForm({ ...experienceForm, order_index: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-gray-850 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
               <div className="flex justify-end items-end">
