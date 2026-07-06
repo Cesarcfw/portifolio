@@ -735,15 +735,16 @@ export default function Admin() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Proficiência (%)</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="100"
+                <label className="block text-xs text-gray-400 mb-1">Nível de Proficiência (SEO/ATS)</label>
+                <select
                   value={skillForm.level}
-                  onChange={e => setSkillForm({ ...skillForm, level: parseInt(e.target.value) || 80 })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
-                />
+                  onChange={e => setSkillForm({ ...skillForm, level: parseInt(e.target.value) || 90 })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition h-10"
+                >
+                  <option value={90}>Avançado / Especialista</option>
+                  <option value={70}>Intermediário</option>
+                  <option value={50}>Iniciante / Básico</option>
+                </select>
               </div>
               <div className="flex gap-3 items-end md:col-span-2">
                 <div className="flex-1">
@@ -790,7 +791,7 @@ export default function Admin() {
                         <div key={s.id} className="flex justify-between items-center bg-gray-800 p-2.5 rounded-lg border border-gray-700/50">
                           <span className="text-sm font-medium flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-                            {s.name} <span className="text-xs text-gray-500">({s.level}%)</span>
+                            {s.name} <span className="text-xs text-gray-500">({s.level >= 90 ? 'Avançado' : s.level >= 70 ? 'Intermediário' : 'Iniciante'})</span>
                           </span>
                           <div className="flex gap-2">
                             <button onClick={() => startEditSkill(s)} className="text-xs text-blue-400 hover:underline">Editar</button>
