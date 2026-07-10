@@ -1,0 +1,292 @@
+PORTFOLIO STRUCTURE ATTRIBUTION LICENSE
+Version 1.0 — 2026
+
+Copyright © 2026 César Chaves Fonsêca Watanabe Maluf
+All rights reserved except for the permissions expressly granted below.
+
+1. Definitions
+
+For the purposes of this License:
+
+“Original Repository” means the source repository available at:
+
+https://github.com/Cesarcfw/portifolio
+
+“Licensed Material” means the source code, project structure,
+configuration files and original technical documentation contained in
+the Original Repository and created by the Copyright Holder.
+
+“Personal Content” means the Copyright Holder’s personal information,
+name beyond the attribution required by this License, photographs,
+profile images, biography, curriculum vitae, professional history,
+contact information, project descriptions, testimonials, personal
+branding, logos and other content that identifies or represents the
+Copyright Holder.
+
+“Derived Portfolio” means a website, application or repository that
+reuses or adapts a substantial portion of the Licensed Material,
+including its source code, components, project structure, architecture
+or layout organization.
+
+2. Grant of Permission
+
+Subject to the conditions of this License, permission is granted, free
+of charge, to any person obtaining a copy of the Licensed Material to:
+
+a. use the Licensed Material for personal, educational or professional
+portfolio projects;
+
+b. copy, modify, adapt and reorganize the Licensed Material;
+
+c. publish and host a Derived Portfolio;
+
+d. distribute modified versions of the Licensed Material;
+
+e. use the Licensed Material to create a customized portfolio for a
+specific client;
+
+f. use a Derived Portfolio to present professional experience, skills,
+projects and services.
+
+3. Required Attribution
+
+Every publicly available Derived Portfolio must provide clear
+attribution to the Original Repository.
+
+The attribution must be included in at least one of the following
+locations:
+
+a. the README file of the Derived Portfolio repository;
+
+b. an “About”, “Credits”, “Acknowledgements” or similarly named section
+of the published portfolio;
+
+c. another reasonably visible location associated with the Derived
+Portfolio.
+
+The attribution must include:
+
+a. the name “César Maluf”; and
+
+b. a functional link to:
+
+https://github.com/Cesarcfw/portifolio
+
+The following wording may be used:
+
+“Portfolio structure inspired by the project created by César Maluf:
+https://github.com/Cesarcfw/portifolio”
+
+Equivalent wording is permitted provided that the original source and
+author remain clear.
+
+Attribution must not be hidden, removed through styling, placed only in
+source code comments or made practically inaccessible to ordinary
+users or repository visitors.
+
+4. Personal Content Is Excluded
+
+This License does not grant permission to copy, publish, redistribute
+or reuse Personal Content.
+
+Any person using the Licensed Material must replace the Copyright
+Holder’s Personal Content with their own information before publicly
+publishing a Derived Portfolio.
+
+In particular, users must not reuse the Copyright Holder’s:
+
+a. biography;
+
+b. curriculum vitae;
+
+c. employment history;
+
+d. contact information;
+
+e. photographs;
+
+f. testimonials or recommendations;
+
+g. personal project descriptions;
+
+h. credentials, tokens or configuration secrets;
+
+i. personal branding or visual identity elements that could reasonably
+cause confusion regarding authorship or identity.
+
+5. No False Authorship
+
+A Derived Portfolio may identify its developer as the author of their
+own modifications, customization and personal content.
+
+However, no person may:
+
+a. claim to be the sole or original author of the Original Repository;
+
+b. remove the attribution required by this License;
+
+c. represent the Original Repository as having been created entirely
+by another person;
+
+d. use the Copyright Holder’s name, image or identity in a manner that
+suggests ownership, partnership, sponsorship or endorsement.
+
+6. Commercial and Professional Use
+
+A Derived Portfolio may be used for professional and commercial
+purposes, including:
+
+a. advertising professional services;
+
+b. obtaining employment or freelance work;
+
+c. developing a customized portfolio for a specific client;
+
+d. charging a client for customization, implementation, deployment or
+support services.
+
+However, the Licensed Material may not be sold, sublicensed or
+redistributed substantially unchanged as:
+
+a. a generic portfolio template;
+
+b. a boilerplate package;
+
+c. a downloadable commercial product;
+
+d. course material;
+
+e. a template marketplace product;
+
+f. a collection or bundle of templates;
+
+without prior written authorization from the Copyright Holder.
+
+A project is considered “substantially unchanged” when its primary
+value continues to come from the Original Repository and only minor
+changes have been made to text, colors, images, branding or
+configuration.
+
+7. Modification and Distribution
+
+Modified versions of the Licensed Material may be distributed,
+provided that:
+
+a. the required attribution is preserved;
+
+b. this License or a copy of its attribution and Personal Content
+conditions accompanies the distributed Licensed Material;
+
+c. modifications are not represented as part of the Original Repository
+unless they were accepted into it by the Copyright Holder;
+
+d. third-party license notices are preserved when required.
+
+A Derived Portfolio may use another license for original modifications
+created by its developer, but the attribution, Personal Content and
+false-authorship conditions of this License must continue to apply to
+the portions derived from the Original Repository.
+
+8. Third-Party Components
+
+This License applies only to material owned by the Copyright Holder.
+
+Libraries, frameworks, packages, fonts, images, icons, services and
+other third-party components remain subject to their own respective
+licenses and terms.
+
+Nothing in this License grants rights that the Copyright Holder does
+not possess.
+
+9. No Trademark, Branding or Endorsement Rights
+
+Except for the limited use of the name “César Maluf” required for
+attribution, this License does not grant permission to use the
+Copyright Holder’s:
+
+a. trademarks;
+
+b. logos;
+
+c. profile image;
+
+d. personal branding;
+
+e. business names;
+
+f. visual identity;
+
+g. reputation or likeness.
+
+No Derived Portfolio may state or imply that the Copyright Holder
+endorses, maintains, verifies or is responsible for the Derived
+Portfolio.
+
+10. Security and Personal Data
+
+Users are responsible for removing or replacing all credentials,
+tokens, passwords, e-mail addresses, database information, personal
+data and environment-specific configuration before publishing a
+Derived Portfolio.
+
+This License does not authorize access to, use of or distribution of
+any confidential information or personal data that may have been
+included accidentally in the repository or its history.
+
+11. Termination
+
+The permissions granted under this License terminate automatically if a
+user fails to comply with any condition of this License.
+
+Permissions may be reinstated if:
+
+a. the violation is fully corrected within 30 days after the user
+becomes aware of the violation or receives notice of it; and
+
+b. the user has not repeatedly violated this License.
+
+Termination does not affect any rights or remedies available to the
+Copyright Holder regarding the period in which the violation occurred.
+
+12. Preservation of Notices
+
+Copyright notices, attribution notices and references to this License
+included in the Licensed Material must not be removed from copies or
+substantial derivative versions, except where a replacement notice
+provides equivalent information and remains clearly visible.
+
+13. No Warranty
+
+THE LICENSED MATERIAL IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE,
+NONINFRINGEMENT, SECURITY, AVAILABILITY OR ERROR-FREE OPERATION.
+
+THE COPYRIGHT HOLDER DOES NOT WARRANT THAT THE LICENSED MATERIAL WILL
+MEET ANY PARTICULAR REQUIREMENT, OPERATE WITHOUT INTERRUPTION OR BE
+SUITABLE FOR PRODUCTION USE.
+
+14. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT HOLDER
+SHALL NOT BE LIABLE FOR ANY CLAIM, LOSS, DAMAGE OR OTHER LIABILITY,
+WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE LICENSED MATERIAL OR ITS USE, MODIFICATION,
+DISTRIBUTION OR INABILITY TO BE USED.
+
+15. Entire Permission
+
+This License describes the permissions granted by the Copyright Holder
+for the Licensed Material.
+
+Any permission not expressly granted remains reserved.
+
+Additional permissions or exceptions may be granted separately in
+writing by the Copyright Holder.
+
+16. Contact
+
+Requests for permissions not covered by this License may be submitted
+through the contact information available in the Original Repository.
+
+END OF LICENSE
