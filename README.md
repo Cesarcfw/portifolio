@@ -113,7 +113,7 @@ Uma descrição mais detalhada dos componentes e fluxos está disponível em [DO
 5. Crie previamente o banco indicado por `DB_NAME` e execute a migração de tabelas a partir da raiz:
 
    ```bash
-   node backend/src/database/migrate.js
+   npm run db:migrate
    ```
 
 6. Inicie frontend e backend em paralelo:
@@ -161,9 +161,11 @@ O arquivo [`backend/src/database/migrate.js`](./backend/src/database/migrate.js)
 - `skills`: habilidades e categorias;
 - `experiences`: experiências profissionais e acadêmicas.
 
-O banco definido por `DB_NAME` deve existir antes da migração. O script cria as tabelas, mas não cria a instância nem o banco MySQL. Na inicialização, o backend também garante as tabelas `settings`, `skills` e `experiences` e insere dados iniciais de habilidades e experiências quando elas estão vazias, desde que a rotina de inicialização do banco seja executada com a configuração de e-mail presente.
+O banco definido por `DB_NAME` deve existir antes da migração. O comando `npm run db:migrate` executa `backend/src/database/migrate.js`, que cria as tabelas, mas não cria a instância nem o banco MySQL.
 
-Não há um script npm específico para migração ou reversão de schema.
+Separadamente, durante a inicialização da API, `backend/src/app.js` testa a conexão, garante a existência das tabelas `settings`, `skills` e `experiences` e insere os dados iniciais de habilidades e experiências quando as respectivas tabelas estão vazias. No código atual, esse bloco só é executado quando `RESEND_API_KEY` e um e-mail de destino (`MY_EMAIL` ou `EMAIL_USER`) estão configurados.
+
+Não há mecanismo de reversão de schema.
 
 ## 📚 Principais aprendizados
 
@@ -184,7 +186,7 @@ As soluções utilizadas foram testadas, adaptadas e documentadas durante o dese
 
 ## 🔭 Melhorias futuras
 
-- Adicionar scripts npm específicos para executar e reverter migrações.
+- Adicionar um mecanismo para reverter migrações.
 - Separar as migrações do processo de inicialização do servidor e versionar alterações de schema.
 - Criar testes automatizados para API e interface.
 - Documentar os endpoints da API em um formato como OpenAPI.

@@ -27,10 +27,12 @@ As variáveis reconhecidas pelo código estão documentadas em [`backend/.env.ex
 Crie previamente o banco MySQL indicado por `DB_NAME`. Depois, a partir da raiz do repositório, execute:
 
 ```bash
-node backend/src/database/migrate.js
+npm run db:migrate
 ```
 
-O script cria as tabelas `users`, `projects`, `settings`, `skills` e `experiences`. Ele não cria o banco MySQL e não possui comando npm próprio.
+O comando deve ser executado na raiz do repositório. Ele chama `backend/src/database/migrate.js`, que cria as tabelas `users`, `projects`, `settings`, `skills` e `experiences`, mas não cria o banco MySQL.
+
+Ao iniciar a API, `src/app.js` também possui uma rotina que garante as tabelas `settings`, `skills` e `experiences` e preenche `skills` e `experiences` quando estão vazias. Essa rotina está condicionada à presença de `RESEND_API_KEY` e de `MY_EMAIL` ou `EMAIL_USER`.
 
 ## Comandos
 
