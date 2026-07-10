@@ -191,3 +191,39 @@ As soluções utilizadas foram testadas, adaptadas e documentadas durante o dese
 - Criar testes automatizados para API e interface.
 - Documentar os endpoints da API em um formato como OpenAPI.
 - Adicionar validação centralizada das variáveis de ambiente na inicialização.
+
+## 📄 Licença e uso
+
+O código e a estrutura deste projeto podem ser utilizados e adaptados
+para a criação de outros portfólios pessoais ou profissionais.
+
+Projetos derivados publicados devem incluir uma referência visível ao
+repositório original:
+
+> Estrutura do portfólio inspirada no projeto criado por
+> [César Maluf](https://github.com/Cesarcfw/portifolio).
+
+A autorização permite modificar a estrutura, publicar um portfólio
+próprio e desenvolver versões personalizadas para clientes.
+
+A autorização não inclui o uso das minhas informações pessoais,
+fotografias, currículo, biografia, recomendações, dados de contato,
+descrições pessoais de projetos ou identidade visual.
+
+Também não é permitido revender o projeto praticamente inalterado como
+template, boilerplate, curso ou produto comercial sem autorização
+prévia.
+
+Consulte o arquivo [LICENSE](./LICENSE) para conhecer todas as
+condições.
+
+### English summary
+
+The source code and structure of this project may be adapted for
+personal or professional portfolios, provided that derived public
+projects include visible attribution to the original repository.
+
+Personal information, photographs, biography, résumé, testimonials,
+contact information and personal branding are not licensed for reuse.
+
+See [LICENSE](./LICENSE) for the complete terms.
