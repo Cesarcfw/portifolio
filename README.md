@@ -1,63 +1,191 @@
-# Portfólio Profissional - César
+# Portfólio Full-Stack — César
 
-Este é um projeto completo de portfólio profissional (Full Stack), desenvolvido para exibir projetos, habilidades e permitir a comunicação direta através de um formulário de contato. Ele conta também com um painel de administrador protegido, de onde é possível atualizar os dados do portfólio em tempo real para todos os visitantes conectados.
+Aplicação web de portfólio para apresentação de projetos, habilidades e experiências, com formulário de contato e painel administrativo autenticado. O projeto separa a interface React de uma API REST em Node.js, persiste os dados em MySQL e distribui atualizações por Socket.IO.
 
-## 🚀 Tecnologias Utilizadas
+## 🌐 Projeto publicado
 
-Este projeto foi construído utilizando as seguintes tecnologias:
+[Visualizar portfólio](https://portifolio-kohl-mu.vercel.app)
+
+## 📸 Demonstração
+
+### Página inicial
+
+![Página inicial do portfólio](./docs/images/home.png)
+
+### Projetos
+
+![Página de projetos](./docs/images/projects.png)
+
+### Painel administrativo
+
+![Painel administrativo](./docs/images/admin.png)
+
+## ✨ Funcionalidades
+
+- Exibição de projetos, habilidades, experiências e informações do perfil.
+- Painel administrativo protegido para gerenciar projetos, habilidades, experiências, configurações e currículos.
+- Autenticação de administrador com JWT e armazenamento de senhas com bcrypt.
+- Recuperação de senha e envio do formulário de contato por e-mail com Resend.
+- Consulta de repositórios, contribuições, linguagens e versão do portfólio pela API do GitHub.
+- Atualização dos clientes conectados após alterações administrativas por Socket.IO.
+- Limitação de requisições nas rotas de autenticação e contato.
+- Monitoramento da conexão com o banco de dados com notificações de falha e recuperação.
+
+## 🛠️ Tecnologias
 
 ### Frontend
-* **React** (via Vite)
-* **TypeScript**
-* **Tailwind CSS** (para estilização responsiva e moderna)
-* **Socket.IO-Client** (para atualizações em tempo real)
-* **React Router DOM** (para navegação)
+
+- React 19, TypeScript e Vite.
+- React Router DOM.
+- Tailwind CSS e PostCSS.
+- Socket.IO Client.
 
 ### Backend
-* **Node.js** com **Express**
-* **MySQL** (banco de dados relacional)
-* **Socket.IO** (WebSockets)
-* **JWT (JSON Web Tokens)** e **Bcrypt** (para autenticação de administrador)
-* **Resend** (para envio de e-mails, formulário de contato e monitoramento do sistema)
 
-## 📁 Estrutura do Projeto
+- Node.js e Express 5.
+- MySQL com `mysql2`.
+- JSON Web Token e bcrypt.
+- Socket.IO.
+- Resend.
+- `express-rate-limit`.
 
-O repositório está dividido em duas pastas principais, formando um monorepo simples:
+### Infraestrutura
 
-* `/frontend` - Contém o código da interface visual e componentes React. Veja o [README do Frontend](./frontend/README.md).
-* `/backend` - Contém o servidor Node.js, rotas da API e comunicação com o banco de dados. Veja o [README do Backend](./backend/README.md).
+- Vercel para o frontend.
+- Render para o backend.
+- Aiven para o banco MySQL.
 
-## ☁️ Arquitetura na Nuvem (Produção)
+## 🧩 Arquitetura
 
-Este projeto foi estruturado para ser implantado na nuvem:
-* **Frontend:** Preparado para deploy rápido na **Vercel**.
-* **Backend:** Preparado para deploy na plataforma **Render**, incluindo rotinas inteligentes para acordar a API da hibernação e um "Heartbeat Monitor" ativo que utiliza o tráfego do site para avisar ao administrador sobre quedas no banco de dados.
-* **Banco de Dados:** Hospedado no **Aiven** (MySQL).
+O repositório utiliza uma organização de monorepo simples. O diretório [`frontend`](./frontend) contém a SPA, enquanto [`backend`](./backend) concentra a API, regras de negócio e acesso ao banco.
 
-## ⚙️ Como executar localmente
+```mermaid
+flowchart LR
+    U[Usuário] --> VF[Frontend na Vercel]
+    VF --> F[React / Vite]
+    F -->|API REST| B[Node.js / Express no Render]
+    F <-->|Socket.IO| B
+    B --> DB[(MySQL no Aiven)]
+    B --> GH[GitHub API]
+    B --> R[Resend]
+```
 
-Na pasta raiz do projeto, temos um pacote configurado com `concurrently` para rodar tanto o frontend quanto o backend simultaneamente com apenas um comando.
+Uma descrição mais detalhada dos componentes e fluxos está disponível em [DOCUMENTATION.md](./DOCUMENTATION.md).
 
-### Passo a passo
+## ✅ Pré-requisitos
 
-1. **Instale as dependências gerais:**
-   Abra o terminal na pasta raiz e execute:
+- Node.js. O repositório não define uma versão mínima em `engines`.
+- npm.
+- MySQL.
+- Git.
+
+## 🚀 Como executar localmente
+
+1. Clone o repositório e acesse a pasta do projeto:
+
+   ```bash
+   git clone https://github.com/Cesarcfw/portifolio.git
+   cd portifolio
+   ```
+
+2. Instale as dependências da raiz, do backend e do frontend:
+
    ```bash
    npm run install:all
    ```
 
-2. **Configure as Variáveis de Ambiente:**
-   Navegue até a pasta `/backend` e crie um arquivo `.env` (veja o README do backend). O frontend precisa de um `.env.local` contendo a variável `VITE_API_URL` apontando para o seu backend.
+3. Crie os arquivos locais de ambiente:
 
-3. **Inicie o Servidor:**
-   Volte para a pasta raiz e execute:
+   ```bash
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   ```
+
+   No Windows PowerShell, use:
+
+   ```powershell
+   Copy-Item backend/.env.example backend/.env
+   Copy-Item frontend/.env.example frontend/.env
+   ```
+
+4. Preencha as variáveis necessárias. Para desenvolvimento local, mantenha `VITE_API_URL=http://localhost:3000` e configure uma instância MySQL acessível pelo backend.
+
+5. Crie previamente o banco indicado por `DB_NAME` e execute a migração de tabelas a partir da raiz:
+
+   ```bash
+   node backend/src/database/migrate.js
+   ```
+
+6. Inicie frontend e backend em paralelo:
+
    ```bash
    npm run dev
    ```
 
-## 🔒 Painel de Administração
+Com a configuração padrão presente no código, o frontend fica disponível em `http://localhost:5173` e a API em `http://localhost:3000`. Também é possível iniciar cada parte separadamente com `npm run dev:frontend` e `npm run dev:backend`.
 
-O sistema conta com uma rota de administração em `/admin`. Através dela você pode:
-* Criar, editar e excluir projetos do portfólio.
-* Atualizar o "Status Atual" e "Disponibilidade" que são exibidos na Home em tempo real graças ao Socket.IO.
-* A senha pode ser redefinida via e-mail diretamente pela tela de login do Admin.
+## 🔐 Variáveis de ambiente
+
+### Backend
+
+| Variável | Finalidade |
+| --- | --- |
+| `PORT` | Porta HTTP da API; o código usa `3000` quando não informada. |
+| `DB_HOST` | Host do servidor MySQL. |
+| `DB_PORT` | Porta do servidor MySQL. |
+| `DB_NAME` | Nome do banco de dados. |
+| `DB_USER` | Usuário do banco. |
+| `DB_PASSWORD` | Senha do banco. |
+| `JWT_SECRET` | Chave usada para assinar e validar tokens JWT. |
+| `GITHUB_USERNAME` | Usuário consultado nas APIs do GitHub. |
+| `GITHUB_TOKEN` | Token usado nas chamadas REST/GraphQL e no gerenciamento de currículos. |
+| `RESEND_API_KEY` | Chave da API Resend para e-mails. |
+| `MY_EMAIL` | Destinatário dos contatos e alertas. |
+| `EMAIL_USER` | Destinatário alternativo usado quando `MY_EMAIL` não está definido. |
+
+### Frontend
+
+| Variável | Finalidade |
+| --- | --- |
+| `VITE_API_URL` | URL base do backend, sem o sufixo `/api`. |
+
+Os modelos seguros estão em [`backend/.env.example`](./backend/.env.example) e [`frontend/.env.example`](./frontend/.env.example). Arquivos `.env` e `.env.local` estão ignorados pelo Git.
+
+## 🗄️ Banco de dados
+
+O arquivo [`backend/src/database/migrate.js`](./backend/src/database/migrate.js) cria, quando necessário, as tabelas:
+
+- `users`: administradores e hashes de senha;
+- `projects`: projetos exibidos no portfólio;
+- `settings`: configurações em formato chave/valor;
+- `skills`: habilidades e categorias;
+- `experiences`: experiências profissionais e acadêmicas.
+
+O banco definido por `DB_NAME` deve existir antes da migração. O script cria as tabelas, mas não cria a instância nem o banco MySQL. Na inicialização, o backend também garante as tabelas `settings`, `skills` e `experiences` e insere dados iniciais de habilidades e experiências quando elas estão vazias, desde que a rotina de inicialização do banco seja executada com a configuração de e-mail presente.
+
+Não há um script npm específico para migração ou reversão de schema.
+
+## 📚 Principais aprendizados
+
+- Separação de responsabilidades entre frontend e backend.
+- Criação e consumo de APIs REST.
+- Autenticação com JWT e bcrypt.
+- Integração e consultas SQL com MySQL.
+- Atualizações em tempo real com Socket.IO.
+- Configuração segura por variáveis de ambiente.
+- Integração com GitHub API e Resend.
+- Deploy independente do frontend, backend e banco de dados.
+
+## 🤖 Processo de desenvolvimento
+
+O projeto foi desenvolvido com apoio de documentação, pesquisa técnica e ferramentas de inteligência artificial para acelerar tarefas de implementação, depuração e revisão.
+
+As soluções utilizadas foram testadas, adaptadas e documentadas durante o desenvolvimento, com foco no entendimento da comunicação entre frontend, backend, banco de dados, autenticação e deploy.
+
+## 🔭 Melhorias futuras
+
+- Adicionar scripts npm específicos para executar e reverter migrações.
+- Separar as migrações do processo de inicialização do servidor e versionar alterações de schema.
+- Criar testes automatizados para API e interface.
+- Documentar os endpoints da API em um formato como OpenAPI.
+- Adicionar validação centralizada das variáveis de ambiente na inicialização.

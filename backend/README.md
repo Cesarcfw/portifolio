@@ -1,56 +1,61 @@
-# Backend - API do Portfólio
+# Backend do Portfólio
 
-Este diretório contém a API REST do projeto, construída usando Node.js, Express, e MySQL. É a ponte entre o banco de dados e o frontend.
+API REST em Node.js e Express responsável por autenticação, regras de negócio, persistência MySQL, integrações externas e eventos em tempo real. Para visão geral e execução integrada, consulte o [README principal](../README.md).
 
-## 🗄️ Estrutura e Funcionalidades
+## Responsabilidades
 
-* **Autenticação (`/api/auth`)**: Geração e validação de JWTs (JSON Web Tokens). Inclui um fluxo de "esqueci a senha" que envia e-mails via API do Resend. Senhas são salvas de forma segura no banco de dados usando `bcrypt`.
-* **Gerenciamento de Projetos (`/api/projects`)**: API RESTful completa (GET, POST, PUT, DELETE) para gerenciar os projetos do banco de dados. Operações de modificação são protegidas por autenticação.
-* **Integração com GitHub (`/api/github`)**: Consome a API do GitHub para buscar repositórios, calcular quantidade de commits em tempo real e desenhar um gráfico de contribuições (via GraphQL).
-* **Configurações Globais (`/api/settings`)**: Fornece um mecanismo chave/valor para salvar os textos e status dinâmicos do perfil do administrador.
-* **Heartbeat & E-mails (Resend)**: Um sistema inteligente que usa as rotas públicas para checar passivamente se o banco de dados Aiven está offline, e notifica o dono via e-mail sem causar sobrecarga ou envios múltiplos.
-* **Comunicação em Tempo Real**: Usando `Socket.IO`, o servidor notifica todos os clientes conectados sempre que um dado é alterado no banco de dados, enviando um evento `refresh_data`.
+- Autenticação administrativa com JWT e bcrypt.
+- CRUD de projetos, habilidades e experiências.
+- Gerenciamento de configurações e currículos.
+- Consulta às APIs REST e GraphQL do GitHub.
+- Envio de contatos, recuperação de senha e alertas com Resend.
+- Eventos `refresh_data` via Socket.IO.
+- Rate limiting nas rotas de autenticação e contato.
 
-## ⚙️ Variáveis de Ambiente
+## Variáveis de ambiente
 
-Na pasta `/backend`, você deve possuir um arquivo `.env` com a seguinte estrutura:
+Crie o arquivo local a partir do modelo:
 
-```env
-# Servidor e Banco de Dados
-PORT=3000
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=sua_senha
-DB_NAME=portfolio
-
-# Autenticação (JWT)
-JWT_SECRET=uma_string_aleatoria_super_secreta
-
-# Informações do GitHub
-GITHUB_USERNAME=seu_usuario_github
-GITHUB_TOKEN=seu_token_de_acesso_pessoal_github
-
-# Envio de E-mails e Monitoramento (Resend)
-RESEND_API_KEY=re_suachaveaqui12345
-MY_EMAIL=seu_email_registrado@gmail.com
+```bash
+cp .env.example .env
 ```
 
-## ☁️ Deploy na Nuvem (Render)
+As variáveis reconhecidas pelo código estão documentadas em [`backend/.env.example`](./.env.example) e no [README principal](../README.md#-variáveis-de-ambiente). Não armazene tokens, senhas ou chaves reais no repositório.
 
-Este backend foi perfeitamente adaptado para rodar na camada gratuita da nuvem **Render**:
-1. O Render costuma hibernar o servidor após inatividade. O Frontend já possui um sistema para lidar com o "tempo de aquecimento".
-2. Para que a API de e-mail (Resend) e o acesso ao MySQL funcionem na nuvem, você deve inserir todas as variáveis de ambiente acima diretamente na aba "Environment" do seu projeto no painel do Render.
-3. Para evitar que o backend durma durante o dia, recomenda-se configurar um ping através do site **cron-job.org** a cada 10 minutos apontando para a sua URL da API.
+## Banco de dados
 
-## 🛠 Comandos Disponíveis
+Crie previamente o banco MySQL indicado por `DB_NAME`. Depois, a partir da raiz do repositório, execute:
 
-Navegue até a pasta `/backend` e você poderá utilizar:
+```bash
+node backend/src/database/migrate.js
+```
 
-* `npm run dev` - Roda o servidor usando o `nodemon`. Sempre que você salvar um arquivo Javascript, o servidor é reiniciado automaticamente.
+O script cria as tabelas `users`, `projects`, `settings`, `skills` e `experiences`. Ele não cria o banco MySQL e não possui comando npm próprio.
 
-## 🗃 Banco de Dados
+## Comandos
 
-A arquitetura usa MySQL e trabalha com as seguintes tabelas:
-* `users` - Para o login do painel administrativo.
-* `projects` - Para salvar as informações, links e status dos projetos do portfólio.
-* `settings` - Para armazenar customizações (ex: status atual de trabalho, disponibilidade).
+Execute dentro de `backend/`:
+
+```bash
+npm install
+npm run dev
+```
+
+| Comando | Descrição |
+| --- | --- |
+| `npm run dev` | Inicia a API com reinicialização automática pelo nodemon. |
+| `npm start` | Inicia a API com Node.js. |
+
+Quando `PORT` não é definida, a API usa `http://localhost:3000`.
+
+## Rotas principais
+
+- `/api/auth`: cadastro inicial, login e redefinição de senha.
+- `/api/projects`: consulta e gerenciamento de projetos.
+- `/api/github`: repositórios, contribuições, linguagens e versão.
+- `/api/contact`: envio do formulário de contato.
+- `/api/settings`: configurações e currículos.
+- `/api/skills`: consulta e gerenciamento de habilidades.
+- `/api/experiences`: consulta e gerenciamento de experiências.
+
+As operações administrativas de alteração são protegidas por autenticação, conforme definido nas rotas do backend.
