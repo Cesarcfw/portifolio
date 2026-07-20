@@ -23,10 +23,14 @@ async function updateSettings(req, res) {
 }
 
 async function uploadResume(req, res) {
-  const { name, description, base64Data } = req.body
+  const { name, description, base64Data, language = 'pt-BR' } = req.body
 
   if (!name || !base64Data) {
     return res.status(400).json({ error: 'Nome e arquivo são obrigatórios' })
+  }
+
+  if (!['pt-BR', 'en'].includes(language)) {
+    return res.status(400).json({ error: 'Idioma do currículo inválido' })
   }
 
   try {
@@ -79,6 +83,7 @@ async function uploadResume(req, res) {
       id: Date.now(),
       name: name,
       description: description || '',
+      language,
       url: `/curriculos/${filename}` // Link relativo que a Vercel vai resolver
     }
 
@@ -115,10 +120,15 @@ async function removeResume(req, res) {
 
 async function editResume(req, res) {
   const id = parseInt(req.params.id)
-  const { name, description } = req.body
+  const { name, description, language = 'pt-BR' } = req.body
 
   if (!name) {
     return res.status(400).json({ error: 'O nome é obrigatório' })
+  }
+
+
+  if (!['pt-BR', 'en'].includes(language)) {
+    return res.status(400).json({ error: 'Idioma do currículo inválido' })
   }
 
   try {
@@ -134,6 +144,7 @@ async function editResume(req, res) {
 
     resumes[resumeIndex].name = name
     resumes[resumeIndex].description = description || ''
+    resumes[resumeIndex].language = language
 
     await settingsModel.updateSetting('resumes_links', JSON.stringify(resumes))
     req.io.emit('refresh_data')

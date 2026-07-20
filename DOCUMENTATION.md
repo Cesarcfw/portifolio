@@ -7,7 +7,7 @@ Este documento detalha a arquitetura, o fluxo de dados e a estrutura de diretór
 ## 1. Arquitetura Geral
 
 O projeto adota uma arquitetura **Cliente-Servidor (Client-Server)** desacoplada:
-* **Frontend (Cliente):** Um Single Page Application (SPA) em React (construído com Vite), utilizando TypeScript para tipagem estática e Tailwind CSS para estilização.
+* **Frontend (Cliente):** Um Single Page Application (SPA) em React (construído com Vite), utilizando TypeScript, Tailwind CSS e um contexto para alternar a interface pública entre português do Brasil e inglês.
 * **Backend (Servidor):** Uma API RESTful em Node.js com Express, que expõe endpoints para acesso aos dados e gerencia a lógica de negócios e segurança.
 * **Banco de Dados:** MySQL, responsável pela persistência de usuários, projetos, configurações, habilidades e experiências.
 * **Comunicação em Tempo Real:** O `Socket.IO` permite notificar clientes conectados após alterações administrativas.
@@ -94,6 +94,7 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 ### 4.1. Estrutura de Diretórios
 * `src/App.tsx`: A raiz da árvore de componentes. Ele encapsula o sistema de roteamento (`react-router-dom`) e conecta-se ao `Socket.IO` do servidor. Escuta o evento global `refresh_data` para forçar um recarregamento da página (`window.location.reload()`).
 * `src/contexts/AuthContext.tsx`: Gerenciador de estado global para a autenticação do Admin. Mantém o token JWT na memória local (e no `localStorage`) e expõe métodos `login` e `logout`. Protege a tela de `/admin`.
+* `src/contexts/LanguageContext.tsx`: Mantém o idioma `pt-BR` ou `en`, persiste a preferência no `localStorage` e atualiza o atributo `lang` do documento.
 * `src/services/api.ts`: Centraliza requisições `fetch` para autenticação, projetos, GitHub, configurações, habilidades e experiências. A URL do backend é definida por `import.meta.env.VITE_API_URL`, com fallback local no código.
 * `src/pages/`:
   * `Home.tsx`: A página inicial. Busca simultaneamente Projetos de Destaque, Repositórios e Contribuições do GitHub, e Status Dinâmicos das configurações.
@@ -104,7 +105,14 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
   * `ResetPassword.tsx`: Tela que captura o token da URL enviado por e-mail e apresenta o formulário de nova senha.
 * `src/components/Navbar.tsx`: Menu superior fixo para navegação, contendo o indicador dinâmico da versão atual do portfólio (pill badge verde-água).
 
-### 4.2. Integração Externa e Controle de Versão (GitHub)
+### 4.2. Idiomas e currículos
+
+* A interface pública possui textos em português do Brasil e inglês. As rotas permanecem as mesmas nos dois idiomas.
+* Os textos editoriais em inglês da página inicial e da seção de currículos podem ser configurados no painel e são armazenados como chaves adicionais da tabela `settings`.
+* Cada item do JSON `resumes_links` pode conter `language` com os valores `pt-BR` ou `en`. Registros antigos sem esse campo são tratados como `pt-BR`.
+* A página Sobre exibe apenas os currículos correspondentes ao idioma ativo.
+
+### 4.3. Integração Externa e Controle de Versão (GitHub)
 O backend atua como um proxy (intermediário) para o GitHub:
 * O `githubController.js` utiliza um token de acesso para consultar as APIs GraphQL e REST do GitHub e preparar os dados de contribuições consumidos pelo frontend.
 * **Exibição da Versão do Site:** O backend fornece a rota `/api/github/version`, que busca a última *release* do repositório do portfólio no GitHub (ou o SHA curto do último commit como fallback). A versão é exibida de forma global e estilizada no cabeçalho (`Navbar.tsx`) ao lado do logo "Dev".

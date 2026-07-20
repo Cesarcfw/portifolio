@@ -23,7 +23,9 @@ Aplicação web de portfólio para apresentação de projetos, habilidades e exp
 ## ✨ Funcionalidades
 
 - Exibição de projetos, habilidades, experiências e informações do perfil.
+- Interface pública em português do Brasil e inglês, com preferência de idioma salva no navegador.
 - Painel administrativo protegido para gerenciar projetos, habilidades, experiências, configurações e currículos.
+- Classificação de currículos por idioma (`pt-BR` ou `en`) e exibição conforme o idioma selecionado.
 - Autenticação de administrador com JWT e armazenamento de senhas com bcrypt.
 - Recuperação de senha e envio do formulário de contato por e-mail com Resend.
 - Consulta de repositórios, contribuições, linguagens e versão do portfólio pela API do GitHub.

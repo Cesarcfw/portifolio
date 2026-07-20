@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { getSettings } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Contact() {
+  const { isEnglish } = useLanguage()
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -40,9 +42,9 @@ export default function Contact() {
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <section className="max-w-2xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold mb-4">Contato</h1>
+        <h1 className="text-4xl font-bold mb-4">{isEnglish ? 'Contact' : 'Contato'}</h1>
         <p className="text-gray-400 mb-10">
-          Quer conversar sobre uma oportunidade ou projeto? Me manda uma mensagem!
+          {isEnglish ? 'Would you like to discuss an opportunity or project? Send me a message.' : 'Quer conversar sobre uma oportunidade ou projeto? Envie uma mensagem.'}
         </p>
 
         {/* Links */}
@@ -63,28 +65,28 @@ export default function Contact() {
 
         {/* Formulário */}
         <div className="bg-gray-900 rounded-xl p-8 border border-gray-800">
-          <h2 className="text-xl font-semibold mb-6">Enviar mensagem</h2>
+          <h2 className="text-xl font-semibold mb-6">{isEnglish ? 'Send a message' : 'Enviar mensagem'}</h2>
 
           {status === 'success' && (
             <div className="bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg px-4 py-3 mb-6 text-sm">
-              Mensagem enviada com sucesso!
+              {isEnglish ? 'Message sent successfully!' : 'Mensagem enviada com sucesso!'}
             </div>
           )}
           {status === 'error' && (
             <div className="bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg px-4 py-3 mb-6 text-sm">
-              Erro ao enviar. Tenta novamente.
+              {isEnglish ? 'Unable to send the message. Please try again.' : 'Erro ao enviar. Tente novamente.'}
             </div>
           )}
 
           <div className="flex flex-col gap-4">
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">Nome</label>
+              <label className="text-sm text-gray-400 mb-1 block">{isEnglish ? 'Name' : 'Nome'}</label>
               <input
                 type="text"
                 name="name"
                 value={form.name}
                 onChange={handleChange}
-                placeholder="Seu nome"
+                placeholder={isEnglish ? 'Your name' : 'Seu nome'}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
               />
             </div>
@@ -100,12 +102,12 @@ export default function Contact() {
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">Mensagem</label>
+              <label className="text-sm text-gray-400 mb-1 block">{isEnglish ? 'Message' : 'Mensagem'}</label>
               <textarea
                 name="message"
                 value={form.message}
                 onChange={handleChange}
-                placeholder="Sua mensagem..."
+                placeholder={isEnglish ? 'Your message...' : 'Sua mensagem...'}
                 rows={5}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
               />
@@ -115,7 +117,7 @@ export default function Contact() {
               disabled={status === 'sending'}
               className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 px-6 py-3 rounded-lg font-medium transition"
             >
-              {status === 'sending' ? 'Enviando...' : 'Enviar mensagem'}
+              {status === 'sending' ? (isEnglish ? 'Sending...' : 'Enviando...') : (isEnglish ? 'Send message' : 'Enviar mensagem')}
             </button>
           </div>
         </div>

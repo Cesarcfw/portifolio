@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { getGithubVersion } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Navbar() {
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [version, setVersion] = useState('')
+  const { language, setLanguage, isEnglish } = useLanguage()
 
   useEffect(() => {
     getGithubVersion()
@@ -19,9 +21,9 @@ export default function Navbar() {
 
   const links = [
     { path: '/',         label: 'Home' },
-    { path: '/projetos', label: 'Projetos' },
-    { path: '/sobre',    label: 'Sobre' },
-    { path: '/contato',  label: 'Contato' },
+    { path: '/projetos', label: isEnglish ? 'Projects' : 'Projetos' },
+    { path: '/sobre',    label: isEnglish ? 'About' : 'Sobre' },
+    { path: '/contato',  label: isEnglish ? 'Contact' : 'Contato' },
   ]
 
   return (
@@ -37,7 +39,7 @@ export default function Navbar() {
               className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform" 
             />
             <span className="text-white font-semibold text-sm sm:text-base flex items-center gap-2">
-              Portfólio profissional <span className="text-teal-400">Dev</span>
+              {isEnglish ? 'Professional portfolio' : 'Portfólio profissional'} <span className="text-teal-400">Dev</span>
               {version && (
                 <span className="text-[10px] font-normal bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full scale-90 sm:scale-100">
                   {version}
@@ -64,6 +66,14 @@ export default function Navbar() {
                 )}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => setLanguage(language === 'pt-BR' ? 'en' : 'pt-BR')}
+              className="ml-2 border border-gray-700 rounded-lg px-3 py-2 text-xs text-teal-400 hover:border-teal-500/50 transition"
+              aria-label={isEnglish ? 'Mudar idioma para português' : 'Switch language to English'}
+            >
+              {isEnglish ? 'PT' : 'EN'}
+            </button>
           </div>
 
           {/* Botão hamburger mobile */}
@@ -100,6 +110,16 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setLanguage(language === 'pt-BR' ? 'en' : 'pt-BR')
+              setIsOpen(false)
+            }}
+            className="px-4 py-3 rounded-xl text-left text-sm text-teal-400 hover:bg-gray-800/50 transition"
+          >
+            {isEnglish ? 'Português (Brasil)' : 'English'}
+          </button>
         </div>
       </div>
     </nav>

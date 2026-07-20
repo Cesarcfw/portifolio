@@ -5,6 +5,8 @@ Interface web do portfólio, implementada como uma SPA com React, TypeScript e V
 ## Funcionalidades
 
 - Páginas inicial, projetos, sobre e contato.
+- Seletor entre português do Brasil e inglês, com preferência salva em `localStorage`.
+- Filtragem dos currículos de acordo com o idioma selecionado.
 - Painel administrativo e tela de redefinição de senha.
 - Consumo centralizado da API REST do backend.
 - Atualização após eventos `refresh_data` recebidos por Socket.IO.
@@ -46,6 +48,7 @@ O Vite utiliza `http://localhost:5173` por padrão na configuração atual.
 
 - `src/components`: componentes compartilhados.
 - `src/contexts`: contexto de autenticação.
+- `src/contexts/LanguageContext.tsx`: idioma ativo da interface pública.
 - `src/pages`: páginas e painel administrativo.
 - `src/services`: cliente da API.
 
