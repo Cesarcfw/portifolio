@@ -122,7 +122,7 @@ export async function getSkills() {
   return res.json()
 }
 
-export async function createSkill(token: string, data: { name: string, category: string, level?: number, color?: string }) {
+export async function createSkill(token: string, data: { name: string, name_en?: string, category: string, category_en?: string, level?: number, color?: string }) {
   const res = await fetch(`${BASE_URL}/skills`, {
     method: 'POST',
     headers: {
@@ -134,7 +134,7 @@ export async function createSkill(token: string, data: { name: string, category:
   return res.json()
 }
 
-export async function updateSkill(token: string, id: number, data: { name: string, category: string, level?: number, color?: string }) {
+export async function updateSkill(token: string, id: number, data: { name: string, name_en?: string, category: string, category_en?: string, level?: number, color?: string }) {
   const res = await fetch(`${BASE_URL}/skills/${id}`, {
     method: 'PUT',
     headers: {
@@ -162,7 +162,7 @@ export async function getExperiences() {
   return res.json()
 }
 
-export async function createExperience(token: string, data: { company: string, role: string, period: string, description?: string, type?: string, order_index?: number }) {
+export async function createExperience(token: string, data: { company: string, company_en?: string, role: string, role_en?: string, period: string, period_en?: string, description?: string, description_en?: string, techs?: string, type?: string, order_index?: number }) {
   const res = await fetch(`${BASE_URL}/experiences`, {
     method: 'POST',
     headers: {
@@ -174,7 +174,7 @@ export async function createExperience(token: string, data: { company: string, r
   return res.json()
 }
 
-export async function updateExperience(token: string, id: number, data: { company: string, role: string, period: string, description?: string, type?: string, order_index?: number }) {
+export async function updateExperience(token: string, id: number, data: { company: string, company_en?: string, role: string, role_en?: string, period: string, period_en?: string, description?: string, description_en?: string, techs?: string, type?: string, order_index?: number }) {
   const res = await fetch(`${BASE_URL}/experiences/${id}`, {
     method: 'PUT',
     headers: {

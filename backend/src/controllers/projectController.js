@@ -46,6 +46,9 @@ async function getById(req, res) {
  * Cria um novo projeto no banco de dados e notifica os clientes.
  */
 async function create(req, res) {
+  if (!req.body.title || !req.body.title_en) {
+    return res.status(400).json({ error: 'Títulos em português e inglês são obrigatórios' })
+  }
   try {
     const id = await projectModel.create(req.body)
     req.io.emit('refresh_data')
@@ -59,6 +62,9 @@ async function create(req, res) {
  * Atualiza os dados de um projeto existente e notifica os clientes.
  */
 async function update(req, res) {
+  if (!req.body.title || !req.body.title_en) {
+    return res.status(400).json({ error: 'Títulos em português e inglês são obrigatórios' })
+  }
   try {
     await projectModel.update(req.params.id, req.body)
     req.io.emit('refresh_data')

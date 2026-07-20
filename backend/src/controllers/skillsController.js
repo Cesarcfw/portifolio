@@ -10,15 +10,15 @@ async function getSkills(req, res) {
 }
 
 async function createSkill(req, res) {
-  const { name, category, level, color } = req.body
-  if (!name || !category) {
-    return res.status(400).json({ error: 'Nome e categoria são obrigatórios' })
+  const { name, name_en, category, category_en, level, color } = req.body
+  if (!name || !name_en || !category || !category_en) {
+    return res.status(400).json({ error: 'Nome e categoria são obrigatórios em português e inglês' })
   }
 
   try {
-    const id = await skillsModel.create({ name, category, level, color })
+    const id = await skillsModel.create({ name, name_en, category, category_en, level, color })
     req.io.emit('refresh_data')
-    res.status(201).json({ id, name, category, level, color })
+    res.status(201).json({ id, name, name_en, category, category_en, level, color })
   } catch (err) {
     res.status(500).json({ error: 'Erro ao criar habilidade' })
   }
@@ -26,13 +26,13 @@ async function createSkill(req, res) {
 
 async function updateSkill(req, res) {
   const id = parseInt(req.params.id)
-  const { name, category, level, color } = req.body
-  if (!name || !category) {
-    return res.status(400).json({ error: 'Nome e categoria são obrigatórios' })
+  const { name, name_en, category, category_en, level, color } = req.body
+  if (!name || !name_en || !category || !category_en) {
+    return res.status(400).json({ error: 'Nome e categoria são obrigatórios em português e inglês' })
   }
 
   try {
-    await skillsModel.update(id, { name, category, level, color })
+    await skillsModel.update(id, { name, name_en, category, category_en, level, color })
     req.io.emit('refresh_data')
     res.json({ message: 'Habilidade atualizada com sucesso' })
   } catch (err) {

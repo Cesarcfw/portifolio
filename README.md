@@ -25,7 +25,8 @@ Aplicação web de portfólio para apresentação de projetos, habilidades e exp
 - Exibição de projetos, habilidades, experiências e informações do perfil.
 - Interface pública em português do Brasil e inglês, com preferência de idioma salva no navegador.
 - Painel administrativo protegido para gerenciar projetos, habilidades, experiências, configurações e currículos.
-- Classificação de currículos por idioma (`pt-BR` ou `en`) e exibição conforme o idioma selecionado.
+- Conteúdo dinâmico de projetos, habilidades, experiências e configurações com campos em português e inglês.
+- Classificação de currículos por idioma (`pt-BR` ou `en`), com todos os arquivos exibidos e identificados nas duas versões do site.
 - Autenticação de administrador com JWT e armazenamento de senhas com bcrypt.
 - Recuperação de senha e envio do formulário de contato por e-mail com Resend.
 - Consulta de repositórios, contribuições, linguagens e versão do portfólio pela API do GitHub.
@@ -164,6 +165,8 @@ O arquivo [`backend/src/database/migrate.js`](./backend/src/database/migrate.js)
 - `experiences`: experiências profissionais e acadêmicas.
 
 O banco definido por `DB_NAME` deve existir antes da migração. O comando `npm run db:migrate` executa `backend/src/database/migrate.js`, que cria as tabelas, mas não cria a instância nem o banco MySQL.
+
+A migração também adiciona, em bancos existentes, as colunas de tradução usadas por projetos, habilidades e experiências. Ela preserva os textos atuais; traduções ainda não cadastradas devem ser preenchidas pelo painel administrativo.
 
 Separadamente, durante a inicialização da API, `backend/src/app.js` testa a conexão, garante a existência das tabelas `settings`, `skills` e `experiences` e insere os dados iniciais de habilidades e experiências quando as respectivas tabelas estão vazias. No código atual, esse bloco só é executado quando `RESEND_API_KEY` e um e-mail de destino (`MY_EMAIL` ou `EMAIL_USER`) estão configurados.
 

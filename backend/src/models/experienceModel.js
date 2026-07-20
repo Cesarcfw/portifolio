@@ -6,19 +6,19 @@ async function getAll() {
 }
 
 async function create(data) {
-  const { company, role, period, description, techs, type, order_index } = data
+  const { company, company_en, role, role_en, period, period_en, description, description_en, techs, type, order_index } = data
   const [result] = await pool.query(
-    'INSERT INTO experiences (company, role, period, description, techs, type, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [company, role, period, description || '', techs || '', type || 'work', order_index ?? 0]
+    'INSERT INTO experiences (company, company_en, role, role_en, period, period_en, description, description_en, techs, type, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [company, company_en || '', role, role_en || '', period, period_en || '', description || '', description_en || '', techs || '', type || 'work', order_index ?? 0]
   )
   return result.insertId
 }
 
 async function update(id, data) {
-  const { company, role, period, description, techs, type, order_index } = data
+  const { company, company_en, role, role_en, period, period_en, description, description_en, techs, type, order_index } = data
   await pool.query(
-    'UPDATE experiences SET company = ?, role = ?, period = ?, description = ?, techs = ?, type = ?, order_index = ? WHERE id = ?',
-    [company, role, period, description || '', techs || '', type || 'work', order_index ?? 0, id]
+    'UPDATE experiences SET company = ?, company_en = ?, role = ?, role_en = ?, period = ?, period_en = ?, description = ?, description_en = ?, techs = ?, type = ?, order_index = ? WHERE id = ?',
+    [company, company_en || '', role, role_en || '', period, period_en || '', description || '', description_en || '', techs || '', type || 'work', order_index ?? 0, id]
   )
 }
 

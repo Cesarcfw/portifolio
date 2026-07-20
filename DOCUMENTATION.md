@@ -24,7 +24,7 @@ A aplicação utiliza cinco tabelas, criadas por `backend/src/database/migrate.j
    
 2. **`projects`**
    * **Propósito:** Armazenar os projetos do portfólio.
-   * **Colunas:** `id`, `title`, `description`, `tech_stack`, `github_url`, `live_url`, `thumbnail`, `featured`, `status`, `created_at`.
+   * **Colunas:** `id`, `title`, `title_en`, `description`, `description_en`, `tech_stack`, `github_url`, `live_url`, `thumbnail`, `featured`, `status`, `created_at`.
 
 3. **`settings`**
    * **Propósito:** Armazenar configurações da página no formato chave/valor.
@@ -32,13 +32,13 @@ A aplicação utiliza cinco tabelas, criadas por `backend/src/database/migrate.j
 
 4. **`skills`**
    * **Propósito:** Armazenar as habilidades exibidas no portfólio.
-   * **Colunas:** `id`, `name`, `category`, `level`, `color`, `created_at`.
+   * **Colunas:** `id`, `name`, `name_en`, `category`, `category_en`, `level`, `color`, `created_at`.
 
 5. **`experiences`**
    * **Propósito:** Armazenar experiências profissionais e acadêmicas.
-   * **Colunas:** `id`, `company`, `role`, `period`, `description`, `techs`, `type`, `order_index`, `created_at`.
+   * **Colunas:** `id`, `company`, `company_en`, `role`, `role_en`, `period`, `period_en`, `description`, `description_en`, `techs`, `type`, `order_index`, `created_at`.
 
-O banco indicado por `DB_NAME` deve existir previamente. A partir da raiz, `npm run db:migrate` cria as tabelas ausentes. Durante a inicialização da API, `backend/src/app.js` também garante as tabelas `settings`, `skills` e `experiences` e insere dados iniciais em `skills` e `experiences` quando elas estão vazias. No código atual, essa rotina de inicialização está dentro da condição que exige `RESEND_API_KEY` e um e-mail definido em `MY_EMAIL` ou `EMAIL_USER`.
+O banco indicado por `DB_NAME` deve existir previamente. A partir da raiz, `npm run db:migrate` cria as tabelas ausentes e adiciona as colunas de tradução que ainda não existirem. Durante a inicialização da API, `backend/src/app.js` também verifica essas colunas, garante as tabelas `settings`, `skills` e `experiences` e insere dados iniciais bilíngues em `skills` e `experiences` quando elas estão vazias. No código atual, essa rotina de inicialização está dentro da condição que exige `RESEND_API_KEY` e um e-mail definido em `MY_EMAIL` ou `EMAIL_USER`.
 
 ---
 
@@ -109,8 +109,9 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 
 * A interface pública possui textos em português do Brasil e inglês. As rotas permanecem as mesmas nos dois idiomas.
 * Os textos editoriais em inglês da página inicial e da seção de currículos podem ser configurados no painel e são armazenados como chaves adicionais da tabela `settings`.
+* Projetos, habilidades e experiências possuem campos com sufixo `_en`. A interface seleciona os campos correspondentes ao idioma ativo; novos cadastros exigem os dados principais nos dois idiomas.
 * Cada item do JSON `resumes_links` pode conter `language` com os valores `pt-BR` ou `en`. Registros antigos sem esse campo são tratados como `pt-BR`.
-* A página Sobre exibe apenas os currículos correspondentes ao idioma ativo.
+* A página Sobre exibe todos os currículos nas duas versões do site e identifica cada arquivo como português do Brasil ou inglês.
 
 ### 4.3. Integração Externa e Controle de Versão (GitHub)
 O backend atua como um proxy (intermediário) para o GitHub:

@@ -22,7 +22,9 @@ import {
 interface Project {
   id: number
   title: string
+  title_en?: string
   description: string
+  description_en?: string
   tech_stack: string[]
   github_url: string
   live_url: string
@@ -33,7 +35,9 @@ interface Project {
 interface Skill {
   id: number
   name: string
+  name_en?: string
   category: string
+  category_en?: string
   level: number
   color: string
 }
@@ -41,9 +45,13 @@ interface Skill {
 interface Experience {
   id?: number
   company: string
+  company_en?: string
   role: string
+  role_en?: string
   period: string
+  period_en?: string
   description?: string
+  description_en?: string
   techs?: string
   type: string
   order_index?: number
@@ -74,7 +82,7 @@ export default function Admin() {
   const [showForm, setShowForm] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [form, setForm] = useState({
-    title: '', description: '', tech_stack: '',
+    title: '', title_en: '', description: '', description_en: '', tech_stack: '',
     github_url: '', live_url: '', featured: false,
     status: 'concluido'
   })
@@ -109,7 +117,7 @@ export default function Admin() {
   const [skills, setSkills] = useState<Skill[]>([])
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null)
   const [skillForm, setSkillForm] = useState({
-    name: '', category: 'frontend', level: 80, color: '#00f0ff'
+    name: '', name_en: '', category: 'Frontend', category_en: 'Frontend', level: 80, color: '#00f0ff'
   })
   const [skillsMessage, setSkillsMessage] = useState('')
 
@@ -117,7 +125,7 @@ export default function Admin() {
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [editingExperience, setEditingExperience] = useState<Experience | null>(null)
   const [experienceForm, setExperienceForm] = useState({
-    company: '', role: '', period: '', description: '', techs: '', type: 'work', order_index: 0
+    company: '', company_en: '', role: '', role_en: '', period: '', period_en: '', description: '', description_en: '', techs: '', type: 'work', order_index: 0
   })
   const [expMessage, setExpMessage] = useState('')
 
@@ -241,7 +249,10 @@ export default function Admin() {
   // Skills Handlers
   async function handleSaveSkill(e: React.FormEvent) {
     e.preventDefault()
-    if (!skillForm.name || !skillForm.category) return
+    if (!skillForm.name || !skillForm.name_en || !skillForm.category || !skillForm.category_en) {
+      setSkillsMessage('Preencha nome e categoria nos dois idiomas.')
+      return
+    }
     setSkillsMessage('Salvando...')
     try {
       if (editingSkill) {
@@ -252,7 +263,7 @@ export default function Admin() {
         setSkillsMessage('Habilidade criada!')
       }
       setEditingSkill(null)
-      setSkillForm({ name: '', category: 'frontend', level: 80, color: '#00f0ff' })
+      setSkillForm({ name: '', name_en: '', category: 'Frontend', category_en: 'Frontend', level: 80, color: '#00f0ff' })
       loadData()
       setTimeout(() => setSkillsMessage(''), 3000)
     } catch {
@@ -272,13 +283,16 @@ export default function Admin() {
 
   function startEditSkill(s: Skill) {
     setEditingSkill(s)
-    setSkillForm({ name: s.name, category: s.category, level: s.level, color: s.color })
+    setSkillForm({ name: s.name, name_en: s.name_en || '', category: s.category, category_en: s.category_en || '', level: s.level, color: s.color })
   }
 
   // Experiences Handlers
   async function handleSaveExperience(e: React.FormEvent) {
     e.preventDefault()
-    if (!experienceForm.company || !experienceForm.role || !experienceForm.period) return
+    if (!experienceForm.company || !experienceForm.company_en || !experienceForm.role || !experienceForm.role_en || !experienceForm.period || !experienceForm.period_en) {
+      setExpMessage('Preencha empresa, cargo e período nos dois idiomas.')
+      return
+    }
     setExpMessage('Salvando...')
     try {
       if (editingExperience) {
@@ -289,7 +303,7 @@ export default function Admin() {
         setExpMessage('Experiência criada!')
       }
       setEditingExperience(null)
-      setExperienceForm({ company: '', role: '', period: '', description: '', techs: '', type: 'work', order_index: 0 })
+      setExperienceForm({ company: '', company_en: '', role: '', role_en: '', period: '', period_en: '', description: '', description_en: '', techs: '', type: 'work', order_index: 0 })
       loadData()
       setTimeout(() => setExpMessage(''), 3000)
     } catch {
@@ -311,9 +325,13 @@ export default function Admin() {
     setEditingExperience(e)
     setExperienceForm({
       company: e.company,
+      company_en: e.company_en || '',
       role: e.role,
+      role_en: e.role_en || '',
       period: e.period,
+      period_en: e.period_en || '',
       description: e.description || '',
+      description_en: e.description_en || '',
       techs: e.techs || '',
       type: e.type,
       order_index: e.order_index ?? 0
@@ -350,6 +368,10 @@ export default function Admin() {
 
   // Project Handlers
   async function handleSaveProject() {
+    if (!form.title || !form.title_en) {
+      setSuccessMessage('Preencha o título do projeto nos dois idiomas.')
+      return
+    }
     const payload = {
       ...form,
       tech_stack: form.tech_stack.split(',').map(t => t.trim()).filter(Boolean)
@@ -369,7 +391,7 @@ export default function Admin() {
     })
     setShowForm(false)
     setEditingProject(null)
-    setForm({ title: '', description: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' })
+    setForm({ title: '', title_en: '', description: '', description_en: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' })
     loadData()
   }
 
@@ -386,7 +408,9 @@ export default function Admin() {
     setEditingProject(project)
     setForm({
       title: project.title,
+      title_en: project.title_en || '',
       description: project.description,
+      description_en: project.description_en || '',
       tech_stack: project.tech_stack?.join(', ') || '',
       github_url: project.github_url || '',
       live_url: project.live_url || '',
@@ -499,7 +523,7 @@ export default function Admin() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Projetos do Portfólio</h2>
               <button
-                onClick={() => { setShowForm(!showForm); setEditingProject(null); setForm({ title: '', description: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' }) }}
+                onClick={() => { setShowForm(!showForm); setEditingProject(null); setForm({ title: '', title_en: '', description: '', description_en: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' }) }}
                 className="bg-blue-500 hover:bg-blue-600 px-5 py-2 rounded-lg text-sm font-medium transition"
               >
                 {showForm ? 'Fechar Formulário' : '+ Novo Projeto'}
@@ -515,6 +539,9 @@ export default function Admin() {
                   <input placeholder="Título" value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}
                     className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
+                  <input placeholder="Title (English)" value={form.title_en}
+                    onChange={e => setForm({ ...form, title_en: e.target.value })}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" required />
                   <input placeholder="Tecnologias (ex: React, Node.js, MySQL)" value={form.tech_stack}
                     onChange={e => setForm({ ...form, tech_stack: e.target.value })}
                     className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
@@ -526,6 +553,10 @@ export default function Admin() {
                     className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
                   <textarea placeholder="Descrição" value={form.description}
                     onChange={e => setForm({ ...form, description: e.target.value })}
+                    rows={3}
+                    className="md:col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none" />
+                  <textarea placeholder="Description (English)" value={form.description_en}
+                    onChange={e => setForm({ ...form, description_en: e.target.value })}
                     rows={3}
                     className="md:col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none" />
                   <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
@@ -768,10 +799,24 @@ export default function Admin() {
                 />
               </div>
               <div>
+                <label className="block text-xs text-gray-400 mb-1">Nome em inglês</label>
+                <input
+                  type="text"
+                  placeholder="Example: Databases"
+                  value={skillForm.name_en}
+                  onChange={e => setSkillForm({ ...skillForm, name_en: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-xs text-gray-400 mb-1">Categoria</label>
                 <select
                   value={skillForm.category}
-                  onChange={e => setSkillForm({ ...skillForm, category: e.target.value })}
+                  onChange={e => {
+                    const translations: Record<string, string> = { Frontend: 'Frontend', Backend: 'Backend', 'Banco de dados': 'Databases', Ferramentas: 'Tools', Infraestrutura: 'Infrastructure' }
+                    setSkillForm({ ...skillForm, category: e.target.value, category_en: translations[e.target.value] || '' })
+                  }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
                   <option value="Frontend">Frontend</option>
@@ -780,6 +825,16 @@ export default function Admin() {
                   <option value="Ferramentas">Ferramentas</option>
                   <option value="Infraestrutura">Infraestrutura</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Categoria em inglês</label>
+                <input
+                  type="text"
+                  value={skillForm.category_en}
+                  onChange={e => setSkillForm({ ...skillForm, category_en: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Nível de Proficiência (SEO/ATS)</label>
@@ -879,6 +934,16 @@ export default function Admin() {
                 />
               </div>
               <div>
+                <label className="block text-xs text-gray-400 mb-1">Company / Institution (English)</label>
+                <input
+                  type="text"
+                  value={experienceForm.company_en}
+                  onChange={e => setExperienceForm({ ...experienceForm, company_en: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-xs text-gray-400 mb-1">Cargo / Curso</label>
                 <input 
                   type="text" 
@@ -890,12 +955,32 @@ export default function Admin() {
                 />
               </div>
               <div>
+                <label className="block text-xs text-gray-400 mb-1">Role / Course (English)</label>
+                <input
+                  type="text"
+                  value={experienceForm.role_en}
+                  onChange={e => setExperienceForm({ ...experienceForm, role_en: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-xs text-gray-400 mb-1">Período / Ano</label>
                 <input 
                   type="text" 
                   placeholder="Ex: 2025 - Atualmente, Conclusão: 12/2026"
                   value={experienceForm.period}
                   onChange={e => setExperienceForm({ ...experienceForm, period: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Period / Year (English)</label>
+                <input
+                  type="text"
+                  value={experienceForm.period_en}
+                  onChange={e => setExperienceForm({ ...experienceForm, period_en: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                   required
                 />
@@ -931,15 +1016,13 @@ export default function Admin() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
                 />
               </div>
-
               <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-1">Texto de apresentação em inglês</label>
+                <label className="block text-xs text-gray-400 mb-1">Description / Activities (English)</label>
                 <textarea
-                  value={settings.about_me_text_en || ''}
-                  onChange={e => setSettings({ ...settings, about_me_text_en: e.target.value })}
-                  placeholder="Write the short professional bio shown on the English home page..."
-                  rows={4}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
+                  value={experienceForm.description_en}
+                  onChange={e => setExperienceForm({ ...experienceForm, description_en: e.target.value })}
+                  rows={3}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
                 />
               </div>
               <div>
@@ -949,16 +1032,6 @@ export default function Admin() {
                   value={experienceForm.order_index}
                   onChange={e => setExperienceForm({ ...experienceForm, order_index: parseInt(e.target.value) || 0 })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Texto de disponibilidade em inglês</label>
-                <input
-                  type="text"
-                  value={settings.availability_text_en || ''}
-                  onChange={e => setSettings({ ...settings, availability_text_en: e.target.value })}
-                  placeholder="Available for opportunities"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
                 />
               </div>
               <div className="flex justify-end items-end">
@@ -991,17 +1064,6 @@ export default function Admin() {
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Status profissional em inglês</label>
-                <input
-                  type="text"
-                  value={settings.job_status_text_en || ''}
-                  onChange={e => setSettings({ ...settings, job_status_text_en: e.target.value })}
-                  placeholder="Internship"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
-                />
-              </div>
-
               <div>
                 <h3 className="text-base font-bold text-gray-300 border-b border-gray-800 pb-2 mb-3">🎓 Histórico Acadêmico</h3>
                 <div className="flex flex-col gap-3">
@@ -1046,6 +1108,17 @@ export default function Admin() {
                 />
               </div>
 
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">Texto de apresentação em inglês</label>
+                <textarea
+                  value={settings.about_me_text_en || ''}
+                  onChange={e => setSettings({ ...settings, about_me_text_en: e.target.value })}
+                  placeholder="Write the short professional bio shown on the English home page..."
+                  rows={4}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Texto de Disponibilidade</label>
                 <select 
@@ -1060,6 +1133,16 @@ export default function Admin() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm text-gray-400 mb-1">Texto de disponibilidade em inglês</label>
+                <input
+                  type="text"
+                  value={settings.availability_text_en || ''}
+                  onChange={e => setSettings({ ...settings, availability_text_en: e.target.value })}
+                  placeholder="Available for opportunities"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
+                />
+              </div>
+              <div>
                 <label className="block text-sm text-gray-400 mb-1">Status Profissional Atual</label>
                 <select 
                   value={settings.job_status_text || ''}
@@ -1072,6 +1155,16 @@ export default function Admin() {
                   <option value="Freelancer">Freelancer</option>
                   <option value="Desempregado">Desempregado</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Status profissional em inglês</label>
+                <input
+                  type="text"
+                  value={settings.job_status_text_en || ''}
+                  onChange={e => setSettings({ ...settings, job_status_text_en: e.target.value })}
+                  placeholder="Internship"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
+                />
               </div>
 
               {/* Social URLs */}
