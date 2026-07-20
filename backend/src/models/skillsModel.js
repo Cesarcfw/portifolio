@@ -6,19 +6,19 @@ async function getAll() {
 }
 
 async function create(data) {
-  const { name, category, level, color } = data
+  const { name, name_en, category, category_en, level, color } = data
   const [result] = await pool.query(
-    'INSERT INTO skills (name, category, level, color) VALUES (?, ?, ?, ?)',
-    [name, category, level ?? 80, color ?? '#00f0ff']
+    'INSERT INTO skills (name, name_en, category, category_en, level, color) VALUES (?, ?, ?, ?, ?, ?)',
+    [name, name_en || '', category, category_en || '', level ?? 80, color ?? '#00f0ff']
   )
   return result.insertId
 }
 
 async function update(id, data) {
-  const { name, category, level, color } = data
+  const { name, name_en, category, category_en, level, color } = data
   await pool.query(
-    'UPDATE skills SET name = ?, category = ?, level = ?, color = ? WHERE id = ?',
-    [name, category, level ?? 80, color ?? '#00f0ff', id]
+    'UPDATE skills SET name = ?, name_en = ?, category = ?, category_en = ?, level = ?, color = ? WHERE id = ?',
+    [name, name_en || '', category, category_en || '', level ?? 80, color ?? '#00f0ff', id]
   )
 }
 

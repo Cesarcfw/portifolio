@@ -22,24 +22,24 @@ async function getById(id) {
 }
 
 async function create(data) {
-  const { title, description, tech_stack, github_url, live_url, thumbnail, featured, status } = data
+  const { title, title_en, description, description_en, tech_stack, github_url, live_url, thumbnail, featured, status } = data
   const [result] = await pool.query(
     `INSERT INTO projects 
-     (title, description, tech_stack, github_url, live_url, thumbnail, featured, status) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [title, description, JSON.stringify(tech_stack), github_url, live_url, thumbnail, featured ?? false, status ?? 'concluido']
+     (title, title_en, description, description_en, tech_stack, github_url, live_url, thumbnail, featured, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [title, title_en || '', description, description_en || '', JSON.stringify(tech_stack), github_url, live_url, thumbnail, featured ?? false, status ?? 'concluido']
   )
   return result.insertId
 }
 
 async function update(id, data) {
-  const { title, description, tech_stack, github_url, live_url, thumbnail, featured, status } = data
+  const { title, title_en, description, description_en, tech_stack, github_url, live_url, thumbnail, featured, status } = data
   await pool.query(
     `UPDATE projects SET 
-     title = ?, description = ?, tech_stack = ?, 
+     title = ?, title_en = ?, description = ?, description_en = ?, tech_stack = ?,
      github_url = ?, live_url = ?, thumbnail = ?, featured = ?, status = ?
      WHERE id = ?`,
-    [title, description, JSON.stringify(tech_stack), github_url, live_url, thumbnail, featured, status ?? 'concluido', id]
+    [title, title_en || '', description, description_en || '', JSON.stringify(tech_stack), github_url, live_url, thumbnail, featured, status ?? 'concluido', id]
   )
 }
 

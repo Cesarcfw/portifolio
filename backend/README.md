@@ -8,6 +8,7 @@ API REST em Node.js e Express responsável por autenticação, regras de negóci
 - CRUD de projetos, habilidades e experiências.
 - Gerenciamento de configurações e currículos.
 - Classificação dos currículos em português do Brasil (`pt-BR`) ou inglês (`en`) no JSON armazenado em `settings`.
+- Persistência das versões em inglês de projetos, habilidades e experiências em colunas com sufixo `_en`.
 - Consulta às APIs REST e GraphQL do GitHub.
 - Envio de contatos, recuperação de senha e alertas com Resend.
 - Eventos `refresh_data` via Socket.IO.

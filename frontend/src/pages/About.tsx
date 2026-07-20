@@ -5,7 +5,9 @@ import { useLanguage } from '../contexts/LanguageContext'
 interface Skill {
   id: number
   name: string
+  name_en?: string
   category: string
+  category_en?: string
   level: number
   color: string
 }
@@ -13,9 +15,13 @@ interface Skill {
 interface Experience {
   id?: number
   company: string
+  company_en?: string
   role: string
+  role_en?: string
   period: string
+  period_en?: string
   description?: string
+  description_en?: string
   techs?: string
   type: string
   order_index?: number
@@ -66,17 +72,25 @@ const defaultSkills: Record<string, { name: string, color: string, level: number
 const defaultExperiences: Experience[] = [
   {
     role: 'Jovem Aprendiz',
+    role_en: 'Apprentice',
     company: 'MTEC Energia',
+    company_en: 'MTEC Energia',
     period: '2024 - 2025',
+    period_en: '2024 - 2025',
     description: 'Desenvolvimento de sistemas Full Stack, análise de dados, construção e manutenção de site.',
+    description_en: 'Full Stack systems development, data analysis, website development, and maintenance.',
     techs: 'Node-RED, Vue.js, Node.js, MySQL, Wordpress, JavaScript, Elementor, Ubuntu Server, Cloudflare SSL, Apache, PM2',
     type: 'work'
   },
   {
     role: 'Estagiário de TI',
+    role_en: 'IT Intern',
     company: 'MTEC Energia',
+    company_en: 'MTEC Energia',
     period: '2025 - Atualmente',
+    period_en: '2025 - Present',
     description: 'Desenvolvimento de sistemas Full Stack, automações, análise de dados, suporte de TI, construção e manutenção de site.',
+    description_en: 'Full Stack systems development, automation, data analysis, IT support, website development, and maintenance.',
     techs: 'Node-RED, Vue.js, Node.js, MySQL, Make, Wordpress, JavaScript, Elementor, Ubuntu Server, Bitrix24 CRM, Apache, PM2',
     type: 'work'
   }
@@ -85,15 +99,18 @@ const defaultExperiences: Experience[] = [
 const defaultEducation: Experience[] = [
   {
     role: 'Ciência da Computação',
+    role_en: 'Computer Science',
     company: 'Centro de Ensino Universitário do Distrito Federal (UDF)',
+    company_en: 'University Education Center of the Federal District (UDF)',
     period: 'Conclusão prevista: 12/2026',
+    period_en: 'Expected graduation: December 2026',
     description: '',
     type: 'education'
   }
 ]
 
 export default function About() {
-  const { language, isEnglish } = useLanguage()
+  const { isEnglish } = useLanguage()
   const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
   const [resumes, setResumes] = useState<Resume[]>([])
   const [resumesDescription, setResumesDescription] = useState('')
@@ -152,14 +169,21 @@ export default function About() {
   const displayedSkills: Record<string, { name: string, color: string, level: number }[]> = {}
   if (skills.length > 0) {
     skills.forEach(s => {
-      const cat = s.category
+      const cat = isEnglish ? (s.category_en || s.category) : s.category
       if (!displayedSkills[cat]) {
         displayedSkills[cat] = []
       }
-      displayedSkills[cat].push({ name: s.name, color: s.color, level: s.level })
+      displayedSkills[cat].push({ name: isEnglish ? (s.name_en || s.name) : s.name, color: s.color, level: s.level })
     })
   } else {
-    Object.assign(displayedSkills, defaultSkills)
+    const fallbackCategoryLabels: Record<string, string> = {
+      'Banco de dados': 'Databases',
+      'Ferramentas': 'Tools',
+      'Infraestrutura': 'Infrastructure'
+    }
+    Object.entries(defaultSkills).forEach(([category, items]) => {
+      displayedSkills[isEnglish ? (fallbackCategoryLabels[category] || category) : category] = items
+    })
   }
 
   const workExperiences = experiences.length > 0
@@ -170,12 +194,6 @@ export default function About() {
     ? experiences.filter(e => e.type === 'education')
     : defaultEducation
 
-  const displayedResumes = resumes.filter(resume => (resume.language || 'pt-BR') === language)
-  const categoryLabels: Record<string, string> = {
-    'Banco de dados': 'Databases',
-    'Ferramentas': 'Tools',
-    'Infraestrutura': 'Infrastructure'
-  }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -190,7 +208,7 @@ export default function About() {
         </p>
 
         {/* Currículos em Destaque */}
-        {displayedResumes.length > 0 && (
+        {resumes.length > 0 && (
           <div id="curriculos" className="mt-12 pt-10 border-t border-gray-800/50">
             <h2 className="text-2xl font-bold mb-4">{isEnglish ? 'Résumés' : 'Currículos'}</h2>
             {resumesDescription && (
@@ -200,7 +218,7 @@ export default function About() {
             )}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {displayedResumes.map(r => (
+              {resumes.map(r => (
                 <a 
                   key={r.id} 
                   href={r.url} 
@@ -215,6 +233,9 @@ export default function About() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-200 group-hover:text-white transition-colors">{r.name}</h3>
+                      <span className="inline-flex mt-1 text-[10px] uppercase tracking-wide bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full">
+                        {(r.language || 'pt-BR') === 'en' ? (isEnglish ? 'English' : 'Inglês') : (isEnglish ? 'Portuguese (Brazil)' : 'Português (Brasil)')}
+                      </span>
                       {r.description && <p className="text-sm text-gray-400 mt-1">{r.description}</p>}
                       <p className="text-xs text-teal-500/70 group-hover:text-teal-400 transition-colors mt-2">{isEnglish ? 'Click to view the PDF' : 'Clique para visualizar o PDF'}</p>
                     </div>
@@ -243,12 +264,12 @@ export default function About() {
               <div key={exp.id || i} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="text-lg font-semibold">{exp.role}</h3>
-                    <p className="text-teal-400 text-sm">{exp.company}</p>
+                    <h3 className="text-lg font-semibold">{isEnglish ? (exp.role_en || exp.role) : exp.role}</h3>
+                    <p className="text-teal-400 text-sm">{isEnglish ? (exp.company_en || exp.company) : exp.company}</p>
                   </div>
-                  <span className="text-gray-500 text-sm">{exp.period}</span>
+                  <span className="text-gray-500 text-sm">{isEnglish ? (exp.period_en || exp.period) : exp.period}</span>
                 </div>
-                {exp.description && <p className="text-gray-400 text-sm mb-4">{exp.description}</p>}
+                {(isEnglish ? (exp.description_en || exp.description) : exp.description) && <p className="text-gray-400 text-sm mb-4">{isEnglish ? (exp.description_en || exp.description) : exp.description}</p>}
                 {techList.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {techList.map(tech => (
@@ -270,7 +291,7 @@ export default function About() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(displayedSkills).map(([category, items]) => (
             <div key={category} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <h3 className="text-sm font-medium text-teal-400 mb-3">{isEnglish ? (categoryLabels[category] || category) : category}</h3>
+              <h3 className="text-sm font-medium text-teal-400 mb-3">{category}</h3>
               <div className="flex flex-wrap gap-2">
                 {items.map(skill => (
                   <span 
@@ -327,12 +348,12 @@ export default function About() {
             <div key={edu.id || i} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">{edu.role}</h3>
-                  <p className="text-teal-400 text-sm">{edu.company}</p>
+                  <h3 className="text-lg font-semibold">{isEnglish ? (edu.role_en || edu.role) : edu.role}</h3>
+                  <p className="text-teal-400 text-sm">{isEnglish ? (edu.company_en || edu.company) : edu.company}</p>
                 </div>
-                <span className="text-gray-500 text-sm">{edu.period}</span>
+                <span className="text-gray-500 text-sm">{isEnglish ? (edu.period_en || edu.period) : edu.period}</span>
               </div>
-              {edu.description && <p className="text-gray-400 text-sm mt-3">{edu.description}</p>}
+              {(isEnglish ? (edu.description_en || edu.description) : edu.description) && <p className="text-gray-400 text-sm mt-3">{isEnglish ? (edu.description_en || edu.description) : edu.description}</p>}
             </div>
           ))}
         </div>  

@@ -5,7 +5,9 @@ import { useLanguage } from '../contexts/LanguageContext'
 interface Project {
   id: number
   title: string
+  title_en?: string
   description: string
+  description_en?: string
   tech_stack: string[]
   github_url: string
   live_url: string
@@ -271,7 +273,7 @@ export default function Home() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold group-hover:text-teal-400 transition-colors">
-                  {project.title}
+                  {isEnglish ? (project.title_en || project.title) : project.title}
                 </h3>
                 <StatusBadge status={project.status} isEnglish={isEnglish} />
               </div>
@@ -291,7 +293,7 @@ export default function Home() {
               </div>
             </div>
 
-            <p className="text-gray-400 text-sm mb-5 leading-relaxed">{project.description}</p>
+            <p className="text-gray-400 text-sm mb-5 leading-relaxed">{isEnglish ? (project.description_en || project.description) : project.description}</p>
 
             <div className="flex flex-wrap gap-2">
               {project.tech_stack?.map((tech: string) => (
