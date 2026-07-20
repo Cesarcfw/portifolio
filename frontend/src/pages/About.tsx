@@ -29,10 +29,36 @@ interface Experience {
 
 interface Resume {
   id: number
+  pairId?: number
+  order?: number
   name: string
   description?: string
   url: string
   language?: 'pt-BR' | 'en'
+}
+
+interface ResumePair {
+  pairId: number
+  order: number
+  portuguese?: Resume
+  english?: Resume
+}
+
+const getResumePairs = (resumes: Resume[]): ResumePair[] => {
+  const pairs = new Map<number, ResumePair>()
+
+  resumes.forEach((resume, index) => {
+    const pairId = resume.pairId ?? resume.id
+    const pair = pairs.get(pairId) || { pairId, order: resume.order ?? index }
+
+    if ((resume.language || 'pt-BR') === 'en') pair.english = resume
+    else pair.portuguese = resume
+
+    pair.order = Math.min(pair.order, resume.order ?? index)
+    pairs.set(pairId, pair)
+  })
+
+  return Array.from(pairs.values()).sort((a, b) => a.order - b.order)
 }
 
 const defaultSkills: Record<string, { name: string, color: string, level: number }[]> = {
@@ -194,6 +220,8 @@ export default function About() {
     ? experiences.filter(e => e.type === 'education')
     : defaultEducation
 
+  const resumePairs = getResumePairs(resumes)
+
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -217,35 +245,40 @@ export default function About() {
               </p>
             )}
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {resumes.map(r => (
+            <div className="flex flex-col gap-4">
+              {resumePairs.map(pair => (
+                <div key={pair.pairId} className="grid grid-cols-2 gap-4">
+                  {[pair.portuguese, pair.english].filter((resume): resume is Resume => Boolean(resume)).map(resume => (
                 <a 
-                  key={r.id} 
-                  href={r.url} 
+                  key={resume.id}
+                  href={resume.url}
                   target="_blank" 
-                  className="group relative overflow-hidden bg-gray-900 hover:bg-teal-500/10 border border-gray-800 hover:border-teal-500/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-lg hover:shadow-teal-500/10 hover:-translate-y-1"
+                  rel="noreferrer"
+                  className="group min-w-0 relative overflow-hidden bg-gray-900 hover:bg-teal-500/10 border border-gray-800 hover:border-teal-500/50 rounded-2xl p-3 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between transition-all duration-300 shadow-lg hover:shadow-teal-500/10 hover:-translate-y-1"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-gray-800 group-hover:bg-teal-500/20 text-teal-400 w-12 h-12 rounded-xl flex items-center justify-center transition-colors">
+                  <div className="min-w-0 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="shrink-0 bg-gray-800 group-hover:bg-teal-500/20 text-teal-400 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-colors">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-200 group-hover:text-white transition-colors">{r.name}</h3>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-sm sm:text-base break-words text-gray-200 group-hover:text-white transition-colors">{resume.name}</h3>
                       <span className="inline-flex mt-1 text-[10px] uppercase tracking-wide bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full">
-                        {(r.language || 'pt-BR') === 'en' ? (isEnglish ? 'English' : 'Inglês') : (isEnglish ? 'Portuguese (Brazil)' : 'Português (Brasil)')}
+                        {(resume.language || 'pt-BR') === 'en' ? (isEnglish ? 'English' : 'Inglês') : (isEnglish ? 'Portuguese (Brazil)' : 'Português (Brasil)')}
                       </span>
-                      {r.description && <p className="text-sm text-gray-400 mt-1">{r.description}</p>}
+                      {resume.description && <p className="text-sm text-gray-400 mt-1">{resume.description}</p>}
                       <p className="text-xs text-teal-500/70 group-hover:text-teal-400 transition-colors mt-2">{isEnglish ? 'Click to view the PDF' : 'Clique para visualizar o PDF'}</p>
                     </div>
                   </div>
-                  <div className="text-gray-600 group-hover:text-teal-400 transition-colors">
+                  <div className="hidden sm:block text-gray-600 group-hover:text-teal-400 transition-colors">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                   </div>
-                </a>
+                    </a>
+                  ))}
+                </div>
               ))}
             </div>
           </div>
