@@ -98,10 +98,10 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 * `src/services/api.ts`: Centraliza requisições `fetch` para autenticação, projetos, GitHub, configurações, habilidades e experiências. A URL do backend é definida por `import.meta.env.VITE_API_URL`, com fallback local no código.
 * `src/pages/`:
   * `Home.tsx`: A página inicial. Busca simultaneamente Projetos de Destaque, Repositórios e Contribuições do GitHub, e Status Dinâmicos das configurações.
-  * `About.tsx`: Uma página de currículo/sobre que exibe um dicionário estruturado de habilidades, linha do tempo profissional e uma seção dinâmica de currículos (gerenciados pelo administrador com descrições individuais e layouts modernos de pílulas de download).
+  * `About.tsx`: Página Sobre com habilidades, experiências, formação e currículos dinâmicos. Os currículos são agrupados e ordenados por par, com as versões em português e inglês exibidas lado a lado.
   * `Projects.tsx`: Traz a lista exaustiva de todos os projetos cadastrados.
   * `Contact.tsx`: Apresenta o formulário interativo de contato.
-  * `Admin.tsx`: Um painel (dashboard) com duas interfaces. Se não autenticado, mostra o formulário de login e link de "Esqueci a senha" (agora com desconexão automática após expiração do token JWT). Se autenticado, mostra o gerenciador de projetos (CRUD), configurações de status e o gerenciador de currículos (com suporte para upload direto ao GitHub, exclusão e edição de nomes/descrições em tempo real).
+  * `Admin.tsx`: Painel administrativo protegido por autenticação. Reúne o gerenciamento de projetos, habilidades, experiências, configurações e currículos. O cadastro de currículos envia obrigatoriamente um PDF em português e outro em inglês; os pares podem ser reordenados, editados e removidos.
   * `ResetPassword.tsx`: Tela que captura o token da URL enviado por e-mail e apresenta o formulário de nova senha.
 * `src/components/Navbar.tsx`: Menu superior fixo para navegação, contendo o indicador dinâmico da versão atual do portfólio (pill badge verde-água).
 
@@ -110,8 +110,9 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 * A interface pública possui textos em português do Brasil e inglês. As rotas permanecem as mesmas nos dois idiomas.
 * Os textos editoriais em inglês da página inicial e da seção de currículos podem ser configurados no painel e são armazenados como chaves adicionais da tabela `settings`.
 * Projetos, habilidades e experiências possuem campos com sufixo `_en`. A interface seleciona os campos correspondentes ao idioma ativo; novos cadastros exigem os dados principais nos dois idiomas.
-* Cada item do JSON `resumes_links` pode conter `language` com os valores `pt-BR` ou `en`. Registros antigos sem esse campo são tratados como `pt-BR`.
-* A página Sobre exibe todos os currículos nas duas versões do site e identifica cada arquivo como português do Brasil ou inglês.
+* O cadastro de currículo exige simultaneamente um PDF em português do Brasil e outro em inglês. A API grava dois itens em `resumes_links`, vinculados pelo mesmo `pairId` e com a mesma posição em `order`.
+* Cada item mantém `language` com os valores `pt-BR` ou `en`. Registros antigos sem `language`, `pairId` ou `order` continuam legíveis e são tratados como registros legados em português.
+* A ordem é alterada no painel por par, e a página Sobre apresenta cada versão em português ao lado da respectiva versão em inglês.
 
 ### 4.3. Integração Externa e Controle de Versão (GitHub)
 O backend atua como um proxy (intermediário) para o GitHub:

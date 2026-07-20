@@ -82,14 +82,40 @@ export async function updateSettings(token: string, settings: Record<string, str
   return res.json()
 }
 
-export async function uploadResume(token: string, name: string, description: string, base64Data: string, language: 'pt-BR' | 'en') {
+interface ResumeUploadData {
+  name: string
+  description: string
+  base64Data: string
+}
+
+export async function uploadResumePair(token: string, portuguese: ResumeUploadData, english: ResumeUploadData) {
   const res = await fetch(`${BASE_URL}/settings/resume`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({ name, description, base64Data, language })
+    body: JSON.stringify({ portuguese, english })
+  })
+  return res.json()
+}
+
+export async function reorderResumePairs(token: string, pairIds: Array<number | string>) {
+  const res = await fetch(`${BASE_URL}/settings/resume/order`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ pairIds })
+  })
+  return res.json()
+}
+
+export async function removeResumePair(token: string, pairId: number | string) {
+  const res = await fetch(`${BASE_URL}/settings/resume/pair/${pairId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
   })
   return res.json()
 }

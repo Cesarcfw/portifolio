@@ -6,8 +6,9 @@ import {
   forgotPassword, 
   getSettings, 
   updateSettings, 
-  uploadResume, 
-  removeResume, 
+  uploadResumePair,
+  reorderResumePairs,
+  removeResumePair,
   editResume,
   getSkills,
   createSkill,
@@ -63,6 +64,29 @@ interface Resume {
   description?: string
   url: string
   language?: 'pt-BR' | 'en'
+  pairId?: number
+  order?: number
+}
+
+interface ResumePair {
+  pairId: number | string
+  order: number
+  portuguese?: Resume
+  english?: Resume
+}
+
+function getResumePairs(resumes: Resume[]): ResumePair[] {
+  const pairs = new Map<string, ResumePair>()
+  resumes.forEach(resume => {
+    const pairId = resume.pairId || resume.id
+    const key = String(pairId)
+    const pair = pairs.get(key) || { pairId, order: Number(resume.order) || 0 }
+    if ((resume.language || 'pt-BR') === 'en') pair.english = resume
+    else pair.portuguese = resume
+    pair.order = Number(resume.order) || pair.order
+    pairs.set(key, pair)
+  })
+  return [...pairs.values()].sort((a, b) => a.order - b.order)
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
@@ -109,7 +133,12 @@ export default function Admin() {
   const [resumeName, setResumeName] = useState('')
   const [resumeDescription, setResumeDescription] = useState('')
   const [resumeLanguage, setResumeLanguage] = useState<'pt-BR' | 'en'>('pt-BR')
-  const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [resumePtName, setResumePtName] = useState('')
+  const [resumePtDescription, setResumePtDescription] = useState('')
+  const [resumePtFile, setResumePtFile] = useState<File | null>(null)
+  const [resumeEnName, setResumeEnName] = useState('')
+  const [resumeEnDescription, setResumeEnDescription] = useState('')
+  const [resumeEnFile, setResumeEnFile] = useState<File | null>(null)
   const [resumeMessage, setResumeMessage] = useState('')
   const [editingResumeId, setEditingResumeId] = useState<number | null>(null)
 
@@ -189,25 +218,42 @@ export default function Admin() {
   // Resumes Handlers
   async function handleUploadResume(e: React.FormEvent) {
     e.preventDefault()
-    if (!resumeName || !resumeFile) return
-
-    setResumeMessage('Enviando para o GitHub (pode demorar)...')
-    const reader = new FileReader()
-    reader.onloadend = async () => {
-      const base64Data = reader.result as string
-      const res = await uploadResume(token!, resumeName, resumeDescription, base64Data, resumeLanguage)
-      if (res.error) {
-        setResumeMessage(res.error)
-      } else {
-        setResumeMessage('Currículo enviado com sucesso!')
-        setResumeName('')
-        setResumeDescription('')
-        setResumeLanguage('pt-BR')
-        setResumeFile(null)
-        loadData()
-      }
+    if (!resumePtName || !resumePtFile || !resumeEnName || !resumeEnFile) {
+      setResumeMessage('Preencha e selecione os currículos nos dois idiomas.')
+      return
     }
-    reader.readAsDataURL(resumeFile)
+
+    const readFile = (file: File) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+
+    setResumeMessage('Enviando os dois arquivos para o GitHub...')
+    try {
+      const [ptBase64, enBase64] = await Promise.all([readFile(resumePtFile), readFile(resumeEnFile)])
+      const result = await uploadResumePair(
+        token!,
+        { name: resumePtName, description: resumePtDescription, base64Data: ptBase64 },
+        { name: resumeEnName, description: resumeEnDescription, base64Data: enBase64 }
+      )
+      if (result.error) {
+        setResumeMessage(result.error)
+        return
+      }
+
+      setResumeMessage('Par de currículos enviado com sucesso!')
+      setResumePtName('')
+      setResumePtDescription('')
+      setResumePtFile(null)
+      setResumeEnName('')
+      setResumeEnDescription('')
+      setResumeEnFile(null)
+      loadData()
+    } catch {
+      setResumeMessage('Erro ao ler ou enviar os arquivos.')
+    }
   }
 
   async function handleSaveEditedResume(id: number) {
@@ -240,9 +286,21 @@ export default function Admin() {
     setResumeLanguage('pt-BR')
   }
 
-  async function handleDeleteResume(id: number) {
-    if (!confirm('Remover currículo?')) return
-    await removeResume(token!, id)
+  async function handleDeleteResumePair(pairId: number | string) {
+    if (!confirm('Remover as duas versões deste currículo?')) return
+    await removeResumePair(token!, pairId)
+    loadData()
+  }
+
+  async function handleMoveResumePair(pairId: number | string, direction: -1 | 1) {
+    const currentPairs = getResumePairs(resumes)
+    const index = currentPairs.findIndex(pair => String(pair.pairId) === String(pairId))
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= currentPairs.length) return
+
+    const reordered = [...currentPairs]
+    ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
+    await reorderResumePairs(token!, reordered.map(pair => pair.pairId))
     loadData()
   }
 
@@ -657,125 +715,87 @@ export default function Admin() {
             </div>
             
             {editingResumeId === null && (
-              <form onSubmit={handleUploadResume} className="flex flex-col md:flex-row gap-4 mb-6 items-start">
-                <div className="flex-1 flex flex-col gap-2 w-full">
-                  <input 
-                    type="text" 
-                    placeholder="Nome (ex: Full Stack)" 
-                    value={resumeName}
-                    onChange={e => setResumeName(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
-                    required
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Descrição (ex: Focado em tecnologias backend...)" 
-                    value={resumeDescription}
-                    onChange={e => setResumeDescription(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
-                  />
-                  <select
-                    value={resumeLanguage}
-                    onChange={e => setResumeLanguage(e.target.value as 'pt-BR' | 'en')}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition"
-                    aria-label="Idioma do currículo"
-                  >
-                    <option value="pt-BR">Português (Brasil)</option>
-                    <option value="en">English</option>
-                  </select>
+              <form onSubmit={handleUploadResume} className="mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex flex-col gap-3">
+                    <h3 className="font-semibold text-teal-400">Português (Brasil)</h3>
+                    <input type="text" placeholder="Nome do currículo" value={resumePtName}
+                      onChange={e => setResumePtName(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" required />
+                    <input type="text" placeholder="Descrição" value={resumePtDescription}
+                      onChange={e => setResumePtDescription(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" />
+                    <input type="file" accept=".pdf" onChange={e => setResumePtFile(e.target.files?.[0] || null)}
+                      className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white" required />
+                  </div>
+
+                  <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex flex-col gap-3">
+                    <h3 className="font-semibold text-blue-400">English</h3>
+                    <input type="text" placeholder="Résumé name" value={resumeEnName}
+                      onChange={e => setResumeEnName(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" required />
+                    <input type="text" placeholder="Description" value={resumeEnDescription}
+                      onChange={e => setResumeEnDescription(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" />
+                    <input type="file" accept=".pdf" onChange={e => setResumeEnFile(e.target.files?.[0] || null)}
+                      className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white" required />
+                  </div>
                 </div>
-                <input 
-                  type="file" 
-                  accept=".pdf"
-                  onChange={e => setResumeFile(e.target.files?.[0] || null)}
-                  className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700 cursor-pointer w-full"
-                  required
-                />
-                <button 
-                  type="submit"
-                  className="bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap"
-                >
-                  Fazer Upload
+                <button type="submit" className="mt-4 bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-lg text-sm font-medium transition">
+                  Enviar par de currículos
                 </button>
               </form>
             )}
 
-            <div className="flex flex-col gap-2">
-              {resumes.map(r => (
-                <div key={r.id} className="flex flex-col md:flex-row md:items-center justify-between bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg gap-4">
-                  {editingResumeId === r.id ? (
-                    <div className="flex-1 flex flex-col gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="Nome do currículo" 
-                        value={resumeName}
-                        onChange={e => setResumeName(e.target.value)}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition" 
-                      />
-                      <select
-                        value={resumeLanguage}
-                        onChange={e => setResumeLanguage(e.target.value as 'pt-BR' | 'en')}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition"
-                        aria-label="Idioma do currículo"
-                      >
-                        <option value="pt-BR">Português (Brasil)</option>
-                        <option value="en">English</option>
-                      </select>
-                      <input 
-                        type="text" 
-                        placeholder="Descrição (Opcional)" 
-                        value={resumeDescription}
-                        onChange={e => setResumeDescription(e.target.value)}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition" 
-                      />
+            <div className="flex flex-col gap-4">
+              {getResumePairs(resumes).map((pair, index, pairs) => (
+                <div key={pair.pairId} className="bg-gray-800/40 border border-gray-700/50 p-4 rounded-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium text-gray-300">Posição {index + 1}</span>
+                    <div className="flex gap-3 text-sm">
+                      <button onClick={() => handleMoveResumePair(pair.pairId, -1)} disabled={index === 0}
+                        className="text-gray-300 disabled:opacity-30">↑ Subir</button>
+                      <button onClick={() => handleMoveResumePair(pair.pairId, 1)} disabled={index === pairs.length - 1}
+                        className="text-gray-300 disabled:opacity-30">↓ Descer</button>
+                      <button onClick={() => handleDeleteResumePair(pair.pairId)} className="text-red-400">Remover par</button>
                     </div>
-                  ) : (
-                    <div>
-                      <div className="font-medium mb-1">{r.name}</div>
-                      <div className="text-xs text-teal-400 mb-1">{(r.language || 'pt-BR') === 'en' ? 'English' : 'Português (Brasil)'}</div>
-                      {r.description && <div className="text-sm text-gray-400 mb-1">{r.description}</div>}
-                      <a href={r.url} target="_blank" className="text-xs text-blue-400 hover:underline">{r.url}</a>
-                    </div>
-                  )}
+                  </div>
 
-                  <div className="flex gap-3 shrink-0">
-                    {editingResumeId === r.id ? (
-                      <>
-                        <button 
-                          onClick={() => handleSaveEditedResume(r.id)}
-                          className="text-sm text-teal-400 hover:text-teal-300"
-                        >
-                          Salvar
-                        </button>
-                        <button 
-                          onClick={cancelEditResume}
-                          className="text-sm text-gray-400 hover:text-gray-300"
-                        >
-                          Cancelar
-                        </button>
-                      </>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[pair.portuguese, pair.english].map((resume, resumeIndex) => resume ? (
+                      <div key={resume.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        {editingResumeId === resume.id ? (
+                          <div className="flex flex-col gap-2">
+                            <input value={resumeName} onChange={e => setResumeName(e.target.value)}
+                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" />
+                            <input value={resumeDescription} onChange={e => setResumeDescription(e.target.value)}
+                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" />
+                            <div className="flex gap-3 text-sm">
+                              <button onClick={() => handleSaveEditedResume(resume.id)} className="text-teal-400">Salvar</button>
+                              <button onClick={cancelEditResume} className="text-gray-400">Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-xs text-teal-400 mb-1">{resumeIndex === 0 ? 'Português (Brasil)' : 'English'}</div>
+                            <div className="font-medium">{resume.name}</div>
+                            {resume.description && <div className="text-sm text-gray-400 mt-1">{resume.description}</div>}
+                            <div className="flex items-center justify-between mt-3">
+                              <a href={resume.url} target="_blank" className="text-xs text-blue-400 hover:underline">Abrir PDF</a>
+                              <button onClick={() => startEditResume(resume)} className="text-sm text-blue-400">Editar</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     ) : (
-                      <>
-                        <button 
-                          onClick={() => startEditResume(r)}
-                          className="text-sm text-blue-400 hover:text-blue-300"
-                        >
-                          Editar
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteResume(r.id)}
-                          className="text-sm text-red-400 hover:text-red-300"
-                        >
-                          Remover
-                        </button>
-                      </>
-                    )}
+                      <div key={resumeIndex} className="border border-dashed border-yellow-600/50 text-yellow-400/80 rounded-lg p-4 text-sm">
+                        Versão {resumeIndex === 0 ? 'em português' : 'em inglês'} ausente — registro legado.
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
-              {resumes.length === 0 && (
-                <p className="text-sm text-gray-500">Nenhum currículo cadastrado.</p>
-              )}
+              {resumes.length === 0 && <p className="text-sm text-gray-500">Nenhum currículo cadastrado.</p>}
             </div>
           </div>
         )}

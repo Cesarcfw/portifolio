@@ -6,7 +6,7 @@ Interface web do portfólio, implementada como uma SPA com React, TypeScript e V
 
 - Páginas inicial, projetos, sobre e contato.
 - Seletor entre português do Brasil e inglês, com preferência salva em `localStorage`.
-- Exibição de todos os currículos, com identificação do idioma de cada arquivo.
+- Exibição dos currículos em pares ordenados, mantendo as versões em português do Brasil e inglês lado a lado.
 - Seleção dos campos traduzidos de projetos, habilidades, experiências e configurações conforme o idioma ativo.
 - Painel administrativo e tela de redefinição de senha.
 - Consumo centralizado da API REST do backend.
