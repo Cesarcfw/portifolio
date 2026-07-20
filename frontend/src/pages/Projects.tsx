@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getProjects, getGithubRepos } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Project {
   id: number
@@ -24,11 +25,11 @@ interface Repo {
   commits: number
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, isEnglish }: { status: string; isEnglish: boolean }) {
   const map: Record<string, { label: string; className: string }> = {
-    concluido:    { label: 'Concluído',    className: 'bg-teal-500/10 border-teal-500/20 text-teal-400' },
-    em_andamento: { label: 'Em andamento', className: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' },
-    pausado:      { label: 'Pausado',      className: 'bg-gray-500/10 border-gray-500/20 text-gray-400' },
+    concluido:    { label: isEnglish ? 'Completed' : 'Concluído', className: 'bg-teal-500/10 border-teal-500/20 text-teal-400' },
+    em_andamento: { label: isEnglish ? 'In progress' : 'Em andamento', className: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' },
+    pausado:      { label: isEnglish ? 'Paused' : 'Pausado', className: 'bg-gray-500/10 border-gray-500/20 text-gray-400' },
   }
   const s = map[status] ?? map['concluido']
   return (
@@ -39,6 +40,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Projects() {
+  const { isEnglish } = useLanguage()
   const [projects, setProjects] = useState<Project[]>([])
   const [repos, setRepos] = useState<Repo[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,25 +91,27 @@ export default function Projects() {
           */}
           <img 
             src="https://media.tenor.com/lcDEp7V0E6wAAAAC/cryptoadz-coffee-time.gif" 
-            alt="Servidor Acordando" 
+            alt={isEnglish ? 'Server starting' : 'Servidor iniciando'}
             className="w-32 h-32 rounded-xl object-cover shadow-lg pixelated"
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
         
         <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-          Estamos acordando o servidor...
+          {isEnglish ? 'The server is starting...' : 'Estamos iniciando o servidor...'}
         </h1>
         
         <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
-          O primeiro acesso do dia leva cerca de <strong>50 segundos</strong>, pois nosso servidor estava em modo de economia de energia. Ele já está preparando o café!
+          {isEnglish
+            ? <>The first request may take about <strong>50 seconds</strong> while the server starts.</>
+            : <>O primeiro acesso pode levar cerca de <strong>50 segundos</strong> enquanto o servidor inicia.</>}
         </p>
         
         <button 
           onClick={() => window.location.reload()} 
           className="bg-blue-500 hover:bg-blue-600 px-8 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
         >
-          Tentar novamente
+          {isEnglish ? 'Try again' : 'Tentar novamente'}
         </button>
       </main>
     )
@@ -118,15 +122,15 @@ export default function Projects() {
 
       {/* Header */}
       <section className="max-w-5xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold mb-4">Projetos</h1>
-        <p className="text-gray-400">Projetos desenvolvidos durante o estágio, na faculdade e por conta própria.</p>
+        <h1 className="text-4xl font-bold mb-4">{isEnglish ? 'Projects' : 'Projetos'}</h1>
+        <p className="text-gray-400">{isEnglish ? 'Projects developed during internships, college, and independent work.' : 'Projetos desenvolvidos durante o estágio, na faculdade e por conta própria.'}</p>
       </section>
 
       {/* Projetos do banco */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold mb-6">Projetos profissionais</h2>
+        <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'Professional projects' : 'Projetos profissionais'}</h2>
         {loading ? (
-          <p className="text-gray-400">Carregando...</p>
+          <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {projects.map(project => (
@@ -134,11 +138,11 @@ export default function Projects() {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-semibold">{project.title}</h3>
-                    <StatusBadge status={project.status} />
+                    <StatusBadge status={project.status} isEnglish={isEnglish} />
                   </div>
                   {project.featured && (
                     <span className="text-xs bg-blue-500/20 text-teal-400 px-2 py-1 rounded-full">
-                      Destaque
+                      {isEnglish ? 'Featured' : 'Destaque'}
                     </span>
                   )}
                 </div>
@@ -158,7 +162,7 @@ export default function Projects() {
                   )}
                   {project.live_url && (
                     <a href={project.live_url} target="_blank" className="text-sm text-teal-400 hover:text-blue-300 transition">
-                      Ver projeto →
+                      {isEnglish ? 'View project' : 'Ver projeto'} →
                     </a>
                   )}
                 </div>
@@ -170,9 +174,9 @@ export default function Projects() {
 
       {/* Repositórios do GitHub */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold mb-6">Repositórios no GitHub</h2>
+        <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'GitHub repositories' : 'Repositórios no GitHub'}</h2>
         {loading ? (
-          <p className="text-gray-400">Carregando...</p>
+          <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {repos.map(repo => (
@@ -180,7 +184,7 @@ export default function Projects() {
                 className="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-blue-500 transition block">
                 <h3 className="font-semibold mb-1">{repo.name}</h3>
                 <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                  {repo.description || 'Sem descrição'}
+                  {repo.description || (isEnglish ? 'No description' : 'Sem descrição')}
                 </p>
                 <div className="flex items-center gap-3 text-xs text-gray-500">
                   {repo.language && <span>⚡ {repo.language}</span>}

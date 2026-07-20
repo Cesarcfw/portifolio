@@ -49,6 +49,14 @@ interface Experience {
   order_index?: number
 }
 
+interface Resume {
+  id: number
+  name: string
+  description?: string
+  url: string
+  language?: 'pt-BR' | 'en'
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 export default function Admin() {
@@ -74,9 +82,13 @@ export default function Admin() {
   // Settings States
   const [settings, setSettings] = useState({
     availability_text: '',
+    availability_text_en: '',
     job_status_text: '',
+    job_status_text_en: '',
     resumes_description: '',
+    resumes_description_en: '',
     about_me_text: '',
+    about_me_text_en: '',
     linkedin_url: '',
     github_url: '',
     whatsapp_url: '',
@@ -85,9 +97,10 @@ export default function Admin() {
   const [settingsMessage, setSettingsMessage] = useState('')
 
   // Resumes States
-  const [resumes, setResumes] = useState<{ id: number, name: string, description?: string, url: string }[]>([])
+  const [resumes, setResumes] = useState<Resume[]>([])
   const [resumeName, setResumeName] = useState('')
   const [resumeDescription, setResumeDescription] = useState('')
+  const [resumeLanguage, setResumeLanguage] = useState<'pt-BR' | 'en'>('pt-BR')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeMessage, setResumeMessage] = useState('')
   const [editingResumeId, setEditingResumeId] = useState<number | null>(null)
@@ -127,9 +140,13 @@ export default function Admin() {
       if (settsData) {
         setSettings({
           availability_text: settsData.availability_text || '',
+          availability_text_en: settsData.availability_text_en || '',
           job_status_text: settsData.job_status_text || '',
+          job_status_text_en: settsData.job_status_text_en || '',
           resumes_description: settsData.resumes_description || '',
+          resumes_description_en: settsData.resumes_description_en || '',
           about_me_text: settsData.about_me_text || '',
+          about_me_text_en: settsData.about_me_text_en || '',
           linkedin_url: settsData.linkedin_url || '',
           github_url: settsData.github_url || '',
           whatsapp_url: settsData.whatsapp_url || '',
@@ -139,7 +156,7 @@ export default function Admin() {
         if (settsData.resumes_links) {
           try {
             setResumes(JSON.parse(settsData.resumes_links))
-          } catch(e) {
+          } catch {
             setResumes([])
           }
         }
@@ -170,13 +187,14 @@ export default function Admin() {
     const reader = new FileReader()
     reader.onloadend = async () => {
       const base64Data = reader.result as string
-      const res = await uploadResume(token!, resumeName, resumeDescription, base64Data)
+      const res = await uploadResume(token!, resumeName, resumeDescription, base64Data, resumeLanguage)
       if (res.error) {
         setResumeMessage(res.error)
       } else {
         setResumeMessage('Currículo enviado com sucesso!')
         setResumeName('')
         setResumeDescription('')
+        setResumeLanguage('pt-BR')
         setResumeFile(null)
         loadData()
       }
@@ -187,7 +205,7 @@ export default function Admin() {
   async function handleSaveEditedResume(id: number) {
     if (!resumeName) return
     setResumeMessage('Salvando alterações...')
-    const res = await editResume(token!, id, resumeName, resumeDescription)
+    const res = await editResume(token!, id, resumeName, resumeDescription, resumeLanguage)
     if (res.error) {
       setResumeMessage(res.error)
     } else {
@@ -195,20 +213,23 @@ export default function Admin() {
       setEditingResumeId(null)
       setResumeName('')
       setResumeDescription('')
+      setResumeLanguage('pt-BR')
       loadData()
     }
   }
 
-  function startEditResume(r: { id: number, name: string, description?: string }) {
+  function startEditResume(r: Resume) {
     setEditingResumeId(r.id)
     setResumeName(r.name)
     setResumeDescription(r.description || '')
+    setResumeLanguage(r.language || 'pt-BR')
   }
 
   function cancelEditResume() {
     setEditingResumeId(null)
     setResumeName('')
     setResumeDescription('')
+    setResumeLanguage('pt-BR')
   }
 
   async function handleDeleteResume(id: number) {
@@ -589,6 +610,13 @@ export default function Admin() {
                 placeholder="Ex: Abaixo estão as versões do meu currículo direcionadas para diferentes vagas..."
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 transition resize-none h-24"
               />
+              <label className="block text-sm text-gray-400 mb-1 mt-4">Texto explicativo da seção em inglês</label>
+              <textarea
+                value={settings.resumes_description_en || ''}
+                onChange={e => setSettings({ ...settings, resumes_description_en: e.target.value })}
+                placeholder="Example: Select the résumé that best matches the position..."
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 transition resize-none h-24"
+              />
               <button 
                 onClick={handleSaveSettings}
                 className="mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
@@ -615,6 +643,15 @@ export default function Admin() {
                     onChange={e => setResumeDescription(e.target.value)}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" 
                   />
+                  <select
+                    value={resumeLanguage}
+                    onChange={e => setResumeLanguage(e.target.value as 'pt-BR' | 'en')}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition"
+                    aria-label="Idioma do currículo"
+                  >
+                    <option value="pt-BR">Português (Brasil)</option>
+                    <option value="en">English</option>
+                  </select>
                 </div>
                 <input 
                   type="file" 
@@ -644,6 +681,15 @@ export default function Admin() {
                         onChange={e => setResumeName(e.target.value)}
                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition" 
                       />
+                      <select
+                        value={resumeLanguage}
+                        onChange={e => setResumeLanguage(e.target.value as 'pt-BR' | 'en')}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500 transition"
+                        aria-label="Idioma do currículo"
+                      >
+                        <option value="pt-BR">Português (Brasil)</option>
+                        <option value="en">English</option>
+                      </select>
                       <input 
                         type="text" 
                         placeholder="Descrição (Opcional)" 
@@ -655,6 +701,7 @@ export default function Admin() {
                   ) : (
                     <div>
                       <div className="font-medium mb-1">{r.name}</div>
+                      <div className="text-xs text-teal-400 mb-1">{(r.language || 'pt-BR') === 'en' ? 'English' : 'Português (Brasil)'}</div>
                       {r.description && <div className="text-sm text-gray-400 mb-1">{r.description}</div>}
                       <a href={r.url} target="_blank" className="text-xs text-blue-400 hover:underline">{r.url}</a>
                     </div>
@@ -884,6 +931,17 @@ export default function Admin() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition resize-none"
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">Texto de apresentação em inglês</label>
+                <textarea
+                  value={settings.about_me_text_en || ''}
+                  onChange={e => setSettings({ ...settings, about_me_text_en: e.target.value })}
+                  placeholder="Write the short professional bio shown on the English home page..."
+                  rows={4}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
+                />
+              </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Ordem de Exibição (Index)</label>
                 <input 
@@ -891,6 +949,16 @@ export default function Admin() {
                   value={experienceForm.order_index}
                   onChange={e => setExperienceForm({ ...experienceForm, order_index: parseInt(e.target.value) || 0 })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Texto de disponibilidade em inglês</label>
+                <input
+                  type="text"
+                  value={settings.availability_text_en || ''}
+                  onChange={e => setSettings({ ...settings, availability_text_en: e.target.value })}
+                  placeholder="Available for opportunities"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
                 />
               </div>
               <div className="flex justify-end items-end">
@@ -922,6 +990,16 @@ export default function Admin() {
                     </div>
                   ))}
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Status profissional em inglês</label>
+                <input
+                  type="text"
+                  value={settings.job_status_text_en || ''}
+                  onChange={e => setSettings({ ...settings, job_status_text_en: e.target.value })}
+                  placeholder="Internship"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
+                />
               </div>
 
               <div>

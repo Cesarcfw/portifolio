@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getGithubLanguages, getSettings, getSkills, getExperiences } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Skill {
   id: number
@@ -18,6 +19,14 @@ interface Experience {
   techs?: string
   type: string
   order_index?: number
+}
+
+interface Resume {
+  id: number
+  name: string
+  description?: string
+  url: string
+  language?: 'pt-BR' | 'en'
 }
 
 const defaultSkills: Record<string, { name: string, color: string, level: number }[]> = {
@@ -84,8 +93,9 @@ const defaultEducation: Experience[] = [
 ]
 
 export default function About() {
+  const { language, isEnglish } = useLanguage()
   const [topLanguages, setTopLanguages] = useState<{name: string, percentage: number, color: string}[]>([])
-  const [resumes, setResumes] = useState<{id: number, name: string, description?: string, url: string}[]>([])
+  const [resumes, setResumes] = useState<Resume[]>([])
   const [resumesDescription, setResumesDescription] = useState('')
   const [skills, setSkills] = useState<Skill[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
@@ -105,11 +115,11 @@ export default function About() {
           if (data.resumes_links) {
             try {
               setResumes(JSON.parse(data.resumes_links))
-            } catch(e) {}
+            } catch {
+              setResumes([])
+            }
           }
-          if (data.resumes_description) {
-            setResumesDescription(data.resumes_description)
-          }
+          setResumesDescription(isEnglish ? (data.resumes_description_en || '') : (data.resumes_description || ''))
         }
       })
       .catch(console.error)
@@ -129,13 +139,13 @@ export default function About() {
         }
       })
       .catch(console.error)
-  }, [])
+  }, [isEnglish])
 
   // Helper for levels
   const getLevelLabel = (level: number) => {
-    if (level >= 90) return 'Avançado'
-    if (level >= 70) return 'Intermediário'
-    return 'Iniciante'
+    if (level >= 90) return isEnglish ? 'Advanced' : 'Avançado'
+    if (level >= 70) return isEnglish ? 'Intermediate' : 'Intermediário'
+    return isEnglish ? 'Beginner' : 'Iniciante'
   }
 
   // Group skills dynamically
@@ -160,23 +170,29 @@ export default function About() {
     ? experiences.filter(e => e.type === 'education')
     : defaultEducation
 
+  const displayedResumes = resumes.filter(resume => (resume.language || 'pt-BR') === language)
+  const categoryLabels: Record<string, string> = {
+    'Banco de dados': 'Databases',
+    'Ferramentas': 'Tools',
+    'Infraestrutura': 'Infrastructure'
+  }
+
   return (
     <main className="min-h-screen bg-gray-950 text-white">
 
       {/* Header */}
       <section className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold mb-4">Sobre mim</h1>
+        <h1 className="text-4xl font-bold mb-4">{isEnglish ? 'About me' : 'Sobre mim'}</h1>
         <p className="text-gray-400 text-lg leading-relaxed max-w-2xl">
-          Estudante de Ciência da Computação na UDF, formando em dezembro de 2026.
-          Atuo no desenvolvimento Full Stack desde 2024, com experiência prática em
-          desenvolvimento de sistemas, automações e infraestrutura. Busco minha
-          primeira oportunidade como desenvolvedor júnior ou melhor.
+          {isEnglish
+            ? 'Computer Science student at UDF, expected to graduate in December 2026. I have worked with Full Stack development since 2024, with practical experience in systems development, automation, and infrastructure. I am seeking an opportunity as a junior developer.'
+            : 'Estudante de Ciência da Computação na UDF, com conclusão prevista para dezembro de 2026. Atuo no desenvolvimento Full Stack desde 2024, com experiência prática em desenvolvimento de sistemas, automações e infraestrutura. Busco uma oportunidade como desenvolvedor júnior.'}
         </p>
 
         {/* Currículos em Destaque */}
-        {resumes.length > 0 && (
+        {displayedResumes.length > 0 && (
           <div id="curriculos" className="mt-12 pt-10 border-t border-gray-800/50">
-            <h2 className="text-2xl font-bold mb-4">Currículos</h2>
+            <h2 className="text-2xl font-bold mb-4">{isEnglish ? 'Résumés' : 'Currículos'}</h2>
             {resumesDescription && (
               <p className="text-gray-400 text-base leading-relaxed max-w-2xl mb-8">
                 {resumesDescription}
@@ -184,7 +200,7 @@ export default function About() {
             )}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {resumes.map(r => (
+              {displayedResumes.map(r => (
                 <a 
                   key={r.id} 
                   href={r.url} 
@@ -200,7 +216,7 @@ export default function About() {
                     <div>
                       <h3 className="font-semibold text-gray-200 group-hover:text-white transition-colors">{r.name}</h3>
                       {r.description && <p className="text-sm text-gray-400 mt-1">{r.description}</p>}
-                      <p className="text-xs text-teal-500/70 group-hover:text-teal-400 transition-colors mt-2">Clique para visualizar o PDF</p>
+                      <p className="text-xs text-teal-500/70 group-hover:text-teal-400 transition-colors mt-2">{isEnglish ? 'Click to view the PDF' : 'Clique para visualizar o PDF'}</p>
                     </div>
                   </div>
                   <div className="text-gray-600 group-hover:text-teal-400 transition-colors">
@@ -217,7 +233,7 @@ export default function About() {
 
       {/* Experiência */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold mb-6">Experiência</h2>
+        <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'Experience' : 'Experiência'}</h2>
         <div className="flex flex-col gap-4">
           {workExperiences.map((exp, i) => {
             const techList = typeof exp.techs === 'string'
@@ -250,16 +266,16 @@ export default function About() {
 
       {/* Skills */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold mb-6">Habilidades</h2>
+        <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'Skills' : 'Habilidades'}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(displayedSkills).map(([category, items]) => (
             <div key={category} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <h3 className="text-sm font-medium text-teal-400 mb-3">{category}</h3>
+              <h3 className="text-sm font-medium text-teal-400 mb-3">{isEnglish ? (categoryLabels[category] || category) : category}</h3>
               <div className="flex flex-wrap gap-2">
                 {items.map(skill => (
                   <span 
                     key={skill.name} 
-                    title={`Nível: ${getLevelLabel(skill.level)}`}
+                    title={`${isEnglish ? 'Level' : 'Nível'}: ${getLevelLabel(skill.level)}`}
                     className="bg-gray-800/50 border border-gray-700/60 text-gray-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 hover:border-teal-500/50 transition-colors duration-200 cursor-help"
                   >
                     <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: skill.color || '#00f0ff' }} />
@@ -275,10 +291,10 @@ export default function About() {
 
       {/* Linguagens Mais Usadas */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold mb-6">Linguagens mais usadas (GitHub)</h2>
+        <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'Most used languages (GitHub)' : 'Linguagens mais usadas (GitHub)'}</h2>
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           {topLanguages.length === 0 ? (
-            <p className="text-gray-400">Carregando...</p>
+            <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
           ) : (
             <div className="flex flex-col gap-4">
               {topLanguages.map(lang => (
@@ -305,7 +321,7 @@ export default function About() {
 
       {/* Educação */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold mb-6">Educação</h2>
+        <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'Education' : 'Educação'}</h2>
         <div className="flex flex-col gap-4">
           {educationExperiences.map((edu, i) => (
             <div key={edu.id || i} className="bg-gray-900 rounded-xl p-6 border border-gray-800">

@@ -82,26 +82,26 @@ export async function updateSettings(token: string, settings: Record<string, str
   return res.json()
 }
 
-export async function uploadResume(token: string, name: string, description: string, base64Data: string) {
+export async function uploadResume(token: string, name: string, description: string, base64Data: string, language: 'pt-BR' | 'en') {
   const res = await fetch(`${BASE_URL}/settings/resume`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({ name, description, base64Data })
+    body: JSON.stringify({ name, description, base64Data, language })
   })
   return res.json()
 }
 
-export async function editResume(token: string, id: number, name: string, description: string) {
+export async function editResume(token: string, id: number, name: string, description: string, language: 'pt-BR' | 'en') {
   const res = await fetch(`${BASE_URL}/settings/resume/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({ name, description })
+    body: JSON.stringify({ name, description, language })
   })
   return res.json()
 }

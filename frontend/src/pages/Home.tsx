@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getFeaturedProjects, getGithubRepos, getGithubContributions, getSettings } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Project {
   id: number
@@ -38,11 +39,11 @@ interface ContributionData {
   weeks: ContributionWeek[]
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, isEnglish }: { status: string; isEnglish: boolean }) {
   const map: Record<string, { label: string; className: string }> = {
-    concluido:    { label: 'Concluído',    className: 'bg-teal-500/10 border-teal-500/20 text-teal-400' },
-    em_andamento: { label: 'Em andamento', className: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' },
-    pausado:      { label: 'Pausado',      className: 'bg-gray-500/10 border-gray-500/20 text-gray-400' },
+    concluido:    { label: isEnglish ? 'Completed' : 'Concluído', className: 'bg-teal-500/10 border-teal-500/20 text-teal-400' },
+    em_andamento: { label: isEnglish ? 'In progress' : 'Em andamento', className: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' },
+    pausado:      { label: isEnglish ? 'Paused' : 'Pausado', className: 'bg-gray-500/10 border-gray-500/20 text-gray-400' },
   }
   const s = map[status] ?? map['concluido']
   return (
@@ -53,6 +54,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Home() {
+  const { language, isEnglish } = useLanguage()
   const [projects, setProjects] = useState<Project[]>([])
   const [repos, setRepos] = useState<Repo[]>([])
   const [contributions, setContributions] = useState<ContributionData | null>(null)
@@ -111,25 +113,27 @@ export default function Home() {
           */}
           <img 
             src="https://media.tenor.com/lcDEp7V0E6wAAAAC/cryptoadz-coffee-time.gif" 
-            alt="Servidor Acordando" 
+            alt={isEnglish ? 'Server starting' : 'Servidor iniciando'}
             className="w-32 h-32 rounded-xl object-cover shadow-lg pixelated"
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
         
         <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-          Estamos acordando o servidor...
+          {isEnglish ? 'The server is starting...' : 'Estamos iniciando o servidor...'}
         </h1>
         
         <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
-          O primeiro acesso do dia leva cerca de <strong>50 segundos</strong>, pois nosso servidor estava em modo de economia de energia. Ele já está preparando o café!
+          {isEnglish
+            ? <>The first request may take about <strong>50 seconds</strong> while the server starts.</>
+            : <>O primeiro acesso pode levar cerca de <strong>50 segundos</strong> enquanto o servidor inicia.</>}
         </p>
         
         <button 
           onClick={() => window.location.reload()} 
           className="bg-blue-500 hover:bg-blue-600 px-8 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
         >
-          Tentar novamente
+          {isEnglish ? 'Try again' : 'Tentar novamente'}
         </button>
       </main>
     )
@@ -146,7 +150,9 @@ export default function Home() {
 
   function getMonthLabels(weeks: ContributionWeek[]): { label: string; index: number }[] {
     const months: { label: string; index: number }[] = []
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    const monthNames = isEnglish
+      ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     let lastMonth = -1
     weeks.forEach((week, i) => {
       const firstDay = week.contributionDays[0]
@@ -163,7 +169,7 @@ export default function Home() {
 
   function formatDate(dateStr: string): string {
     const date = new Date(dateStr + 'T00:00:00')
-    return date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    return date.toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   }
 
   return (
@@ -181,7 +187,7 @@ export default function Home() {
   {/* Conteúdo */}
   <div className="relative z-10">
     <div className="flex flex-wrap justify-center gap-3 mb-8">
-      {settings.availability_text && (
+      {(isEnglish ? settings.availability_text_en : settings.availability_text) && (
         <div className={`inline-flex items-center gap-2 border text-sm px-4 py-2 rounded-full ${
           settings.availability_text.includes('Agora') ? 'bg-green-500/10 border-green-500/20 text-green-400' :
           settings.availability_text.includes('propostas') ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
@@ -192,28 +198,28 @@ export default function Home() {
             settings.availability_text.includes('propostas') ? 'bg-yellow-400' :
             'bg-red-400'
           }`} />
-          {settings.availability_text}
+          {isEnglish ? settings.availability_text_en : settings.availability_text}
         </div>
       )}
-      {settings.job_status_text && (
+      {(isEnglish ? settings.job_status_text_en : settings.job_status_text) && (
         <div className="inline-flex items-center gap-2 bg-gray-800/50 border border-gray-700/50 text-gray-300 text-sm px-4 py-2 rounded-full">
           <span className="text-xl">💼</span>
-          Status atual: {settings.job_status_text.replace('Status atual: ', '')}
+          {isEnglish ? 'Current status' : 'Status atual'}: {isEnglish ? settings.job_status_text_en : settings.job_status_text.replace('Status atual: ', '')}
         </div>
       )}
     </div>
 
     <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 leading-tight">
-      Olá, eu sou{' '}
+      {isEnglish ? 'Hi, I am' : 'Olá, eu sou'}{' '}
       <span className="bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-600 bg-clip-text text-transparent">
         César
       </span>
     </h1>
 
     <p className="text-base sm:text-xl text-gray-400 max-w-xl mx-auto mb-4">
-      {settings.about_me_text || (
+      {(isEnglish ? settings.about_me_text_en : settings.about_me_text) || (
         <>
-          Desenvolvedor <span className="text-white font-medium">Full Stack</span> focado em automação, sistemas e experiências digitais eficientes.
+          {isEnglish ? 'Full Stack developer focused on automation, systems, and efficient digital experiences.' : <>Desenvolvedor <span className="text-white font-medium">Full Stack</span> focado em automação, sistemas e experiências digitais eficientes.</>}
         </>
       )}
     </p>
@@ -226,15 +232,15 @@ export default function Home() {
     <div className="flex flex-wrap gap-4 justify-center">
       <a href="/projetos"
         className="relative bg-blue-500 hover:bg-teal-400 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40">
-        Ver projetos
+        {isEnglish ? 'View projects' : 'Ver projetos'}
       </a>
       <a href="/sobre#curriculos"
         className="relative bg-teal-500 hover:bg-blue-500 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg shadow-teal-500/25 hover:shadow-blue-500/40">
-        Currículos
+        {isEnglish ? 'Résumés' : 'Currículos'}
       </a>
       <a href="/sobre"
         className="relative border border-gray-700 hover:border-blue-500/50 bg-gray-900/50 backdrop-blur-sm px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:text-teal-400">
-        Sobre mim
+        {isEnglish ? 'About me' : 'Sobre mim'}
       </a>
     </div>
   </div>
@@ -244,14 +250,14 @@ export default function Home() {
 <section className="max-w-5xl mx-auto px-6 py-16">
   <div className="flex items-center gap-3 mb-8">
     <div className="w-8 h-px bg-blue-500" />
-    <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest">Projetos</h2>
+    <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest">{isEnglish ? 'Projects' : 'Projetos'}</h2>
   </div>
-  <h2 className="text-3xl font-bold mb-10">Projetos em destaque</h2>
+  <h2 className="text-3xl font-bold mb-10">{isEnglish ? 'Featured projects' : 'Projetos em destaque'}</h2>
 
   {loading ? (
-    <p className="text-gray-400">Carregando...</p>
+    <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
   ) : projects.length === 0 ? (
-    <p className="text-gray-400">Nenhum projeto em destaque ainda.</p>
+    <p className="text-gray-400">{isEnglish ? 'No featured projects yet.' : 'Nenhum projeto em destaque ainda.'}</p>
   ) : (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {projects.map(project => (
@@ -267,7 +273,7 @@ export default function Home() {
                 <h3 className="text-lg font-semibold group-hover:text-teal-400 transition-colors">
                   {project.title}
                 </h3>
-                <StatusBadge status={project.status} />
+                <StatusBadge status={project.status} isEnglish={isEnglish} />
               </div>
               <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 {project.github_url && (
@@ -303,7 +309,7 @@ export default function Home() {
 
   <div className="mt-8">
     <a href="/projetos" className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
-      Ver todos os projetos →
+      {isEnglish ? 'View all projects' : 'Ver todos os projetos'} →
     </a>
   </div>
 </section>
@@ -313,16 +319,16 @@ export default function Home() {
 <section className="max-w-5xl mx-auto px-6 py-16">
   <div className="flex items-center gap-3 mb-8">
     <div className="w-8 h-px bg-blue-500" />
-    <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest">Atividade</h2>
+    <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest">{isEnglish ? 'Activity' : 'Atividade'}</h2>
   </div>
   <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
     <h2 className="text-2xl sm:text-3xl font-bold">
       <span className="bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">{contributions.total}</span>{' '}
-      contribuições no último ano
+      {isEnglish ? 'contributions in the last year' : 'contribuições no último ano'}
     </h2>
     <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
       className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
-      Ver perfil →
+      {isEnglish ? 'View profile' : 'Ver perfil'} →
     </a>
   </div>
 
@@ -349,11 +355,11 @@ export default function Home() {
           {/* Labels dos dias */}
           <div className="flex flex-col gap-[3px] mr-1 shrink-0">
             <div className="h-[12px]" />
-            <div className="h-[12px] flex items-center"><span className="text-[9px] text-gray-500 w-6">Seg</span></div>
+            <div className="h-[12px] flex items-center"><span className="text-[9px] text-gray-500 w-6">{isEnglish ? 'Mon' : 'Seg'}</span></div>
             <div className="h-[12px]" />
-            <div className="h-[12px] flex items-center"><span className="text-[9px] text-gray-500 w-6">Qua</span></div>
+            <div className="h-[12px] flex items-center"><span className="text-[9px] text-gray-500 w-6">{isEnglish ? 'Wed' : 'Qua'}</span></div>
             <div className="h-[12px]" />
-            <div className="h-[12px] flex items-center"><span className="text-[9px] text-gray-500 w-6">Sex</span></div>
+            <div className="h-[12px] flex items-center"><span className="text-[9px] text-gray-500 w-6">{isEnglish ? 'Fri' : 'Sex'}</span></div>
             <div className="h-[12px]" />
           </div>
 
@@ -380,23 +386,23 @@ export default function Home() {
       <div className="text-xs text-gray-400 h-5">
         {hoveredDay ? (
           <>
-            <span className="font-semibold text-teal-400">{hoveredDay.contributionCount} contribuições</span>
-            {' '}em {formatDate(hoveredDay.date)}
+            <span className="font-semibold text-teal-400">{hoveredDay.contributionCount} {isEnglish ? 'contributions' : 'contribuições'}</span>
+            {' '}{isEnglish ? 'on' : 'em'} {formatDate(hoveredDay.date)}
           </>
         ) : (
-          <span className="text-gray-600">Passe o mouse sobre o gráfico para ver detalhes</span>
+          <span className="text-gray-600">{isEnglish ? 'Hover over the chart to view details' : 'Passe o mouse sobre o gráfico para ver detalhes'}</span>
         )}
       </div>
 
       {/* Legenda */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-gray-500">Menos</span>
+        <span className="text-[10px] text-gray-500">{isEnglish ? 'Less' : 'Menos'}</span>
         <div className="w-[12px] h-[12px] rounded-sm bg-gray-800/50" />
         <div className="w-[12px] h-[12px] rounded-sm bg-teal-900/60" />
         <div className="w-[12px] h-[12px] rounded-sm bg-teal-700/70" />
         <div className="w-[12px] h-[12px] rounded-sm bg-teal-500" />
         <div className="w-[12px] h-[12px] rounded-sm bg-teal-400" />
-        <span className="text-[10px] text-gray-500">Mais</span>
+        <span className="text-[10px] text-gray-500">{isEnglish ? 'More' : 'Mais'}</span>
       </div>
     </div>
   </div>
@@ -410,15 +416,15 @@ export default function Home() {
     <h2 className="text-sm font-medium text-teal-400 uppercase tracking-widest">GitHub</h2>
   </div>
   <div className="flex items-center justify-between mb-10">
-    <h2 className="text-3xl font-bold">Repositórios</h2>
+    <h2 className="text-3xl font-bold">{isEnglish ? 'Repositories' : 'Repositórios'}</h2>
     <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
       className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
-      Ver todos →
+      {isEnglish ? 'View all' : 'Ver todos'} →
     </a>
   </div>
 
   {loading ? (
-    <p className="text-gray-400">Carregando...</p>
+    <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
   ) : (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {repos.slice(0, 6).map(repo => (
@@ -436,7 +442,7 @@ export default function Home() {
             {repo.name}
           </h3>
           <p className="text-gray-500 text-xs mb-4 line-clamp-2">
-            {repo.description || 'Sem descrição'}
+            {repo.description || (isEnglish ? 'No description' : 'Sem descrição')}
           </p>
 
           <div className="flex items-center gap-3 text-xs text-gray-600">
@@ -466,7 +472,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="max-w-5xl mx-auto px-6 py-8 border-t border-gray-900 flex justify-between items-center text-xs text-gray-500">
-        <p>© {new Date().getFullYear()} César. Todos os direitos reservados.</p>
+        <p>© {new Date().getFullYear()} César. {isEnglish ? 'All rights reserved.' : 'Todos os direitos reservados.'}</p>
       </footer>
 
     </main>

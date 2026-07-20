@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { resetPassword } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function ResetPassword() {
+  const { isEnglish } = useLanguage()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const navigate = useNavigate()
@@ -15,27 +17,27 @@ export default function ResetPassword() {
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
     if (!token) {
-      setError('Token de recuperação inválido.')
+      setError(isEnglish ? 'Invalid recovery token.' : 'Token de recuperação inválido.')
       return
     }
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem.')
+      setError(isEnglish ? 'Passwords do not match.' : 'As senhas não coincidem.')
       return
     }
     if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.')
+      setError(isEnglish ? 'The password must contain at least 6 characters.' : 'A senha deve ter pelo menos 6 caracteres.')
       return
     }
 
     setError('')
-    setMessage('Atualizando...')
+    setMessage(isEnglish ? 'Updating...' : 'Atualizando...')
     
     const data = await resetPassword(token, password)
     if (data.error) {
       setMessage('')
       setError(data.error)
     } else {
-      setMessage('Senha atualizada com sucesso! Redirecionando...')
+      setMessage(isEnglish ? 'Password updated successfully. Redirecting...' : 'Senha atualizada com sucesso! Redirecionando...')
       setTimeout(() => {
         navigate('/admin')
       }, 2000)
@@ -45,7 +47,7 @@ export default function ResetPassword() {
   return (
     <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
       <div className="bg-gray-900 rounded-xl p-8 border border-gray-800 w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6">Redefinir Senha</h1>
+        <h1 className="text-2xl font-bold mb-6">{isEnglish ? 'Reset password' : 'Redefinir senha'}</h1>
         
         {error && (
           <div className="bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg px-4 py-3 mb-4 text-sm">
@@ -61,14 +63,14 @@ export default function ResetPassword() {
         <form onSubmit={handleReset} className="flex flex-col gap-4">
           <input
             type="password"
-            placeholder="Nova Senha"
+            placeholder={isEnglish ? 'New password' : 'Nova senha'}
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
           />
           <input
             type="password"
-            placeholder="Confirmar Nova Senha"
+            placeholder={isEnglish ? 'Confirm new password' : 'Confirmar nova senha'}
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
@@ -77,7 +79,7 @@ export default function ResetPassword() {
             type="submit"
             className="bg-teal-500 hover:bg-teal-600 py-3 rounded-lg font-medium transition"
           >
-            Salvar Senha
+            {isEnglish ? 'Save password' : 'Salvar senha'}
           </button>
         </form>
       </div>
