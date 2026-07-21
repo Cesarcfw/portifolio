@@ -1,4 +1,4 @@
-# Documentação Completa do Código - Portfólio Profissional
+# Documentação técnica — Portfólio Full-Stack
 
 Este documento detalha a arquitetura, o fluxo de dados e a estrutura de diretórios do projeto de Portfólio Profissional. A aplicação separa frontend, backend, persistência de dados, autenticação administrativa e comunicação em tempo real.
 
@@ -38,7 +38,7 @@ A aplicação utiliza cinco tabelas, criadas por `backend/src/database/migrate.j
    * **Propósito:** Armazenar experiências profissionais e acadêmicas.
    * **Colunas:** `id`, `company`, `company_en`, `role`, `role_en`, `period`, `period_en`, `description`, `description_en`, `techs`, `type`, `order_index`, `created_at`.
 
-O banco indicado por `DB_NAME` deve existir previamente. A partir da raiz, `npm run db:migrate` cria as tabelas ausentes e adiciona as colunas de tradução que ainda não existirem. Durante a inicialização da API, `backend/src/app.js` também verifica essas colunas, garante as tabelas `settings`, `skills` e `experiences` e insere dados iniciais bilíngues em `skills` e `experiences` quando elas estão vazias. No código atual, essa rotina de inicialização está dentro da condição que exige `RESEND_API_KEY` e um e-mail definido em `MY_EMAIL` ou `EMAIL_USER`.
+O banco indicado por `DB_NAME` deve existir previamente. A partir da raiz, `npm run db:migrate` cria as tabelas ausentes e adiciona as colunas de tradução que ainda não existirem. Durante a inicialização da API, `backend/src/app.js` também verifica essas colunas, garante as tabelas `settings`, `skills` e `experiences` e insere dados iniciais bilíngues em `skills` e `experiences` quando elas estão vazias. Essa inicialização ocorre mesmo quando o Resend não está configurado.
 
 ---
 
@@ -47,8 +47,8 @@ O banco indicado por `DB_NAME` deve existir previamente. A partir da raiz, `npm 
 O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Controller), sem a camada View, pois quem renderiza as visualizações é o Frontend.
 
 ### 3.1. Estrutura de Diretórios
-* `src/app.js`: Ponto de entrada. Configura o Express (incluindo o suporte a `trust proxy` para rate limiting por IP atrás de proxy reverso), CORS, integra o `http.createServer` com o `Socket.IO` e registra todas as rotas da API. Um middleware injeta o servidor WebSocket (`req.io`) em todas as requisições.
-* `src/database/connection.js`: Estabelece o pool de conexões com o MySQL através do módulo `mysql2/promise`.
+* `src/app.js`: Ponto de entrada. Configura o Express (incluindo `trust proxy` para rate limiting atrás de proxy reverso), restringe o CORS, adiciona cabeçalhos de segurança, integra o `http.createServer` com o `Socket.IO` e registra as rotas da API. Um middleware injeta o servidor WebSocket (`req.io`) nas requisições.
+* `src/database/connection.js`: Estabelece o pool de conexões com o MySQL por `mysql2/promise`. Conexões remotas validam o certificado TLS por padrão.
 * `src/models/`: Responsáveis pelas queries SQL e pelo acesso às tabelas.
   * `projectModel.js`, `userModel.js`, `settingsModel.js`, `skillsModel.js`, `experienceModel.js`.
 * `src/database/migrate.js`: Cria as tabelas utilizadas pela aplicação quando elas ainda não existem.
@@ -56,14 +56,16 @@ O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Control
 * `src/routes/`: Mapeiam URLs e verbos HTTP (GET, POST, PUT, DELETE) para as funções específicas nos `controllers`.
 * `src/middleware/authMiddleware.js`: Intercepta rotas privadas verificando a presença e a validade de um JSON Web Token (JWT).
 * `src/middleware/rateLimiter.js`: Middleware que define limitadores de requisições (`express-rate-limit`) para proteger rotas contra spams e ataques de força bruta.
+* `src/utils/security.js`: Funções reutilizáveis para validar e normalizar e-mail, senha, URLs e PDFs, além de escapar conteúdo HTML.
+* `test/security.test.js` e `test/resumePairs.test.js`: Testes unitários das validações de segurança e da associação de currículos legados usando o test runner nativo do Node.js.
 
 ### 3.2. Fluxo de Autenticação (Login e Registro)
-1. **Registro Administrativo:** A rota `POST /api/auth/register` é protegida por um mecanismo de bloqueio (Bootstrap Lock). O sistema conta os usuários existentes; se já houver pelo menos 1 administrador no banco de dados, novas tentativas de registro serão rejeitadas com `403 Forbidden`. Isso evita que invasores criem contas extras em produção.
+1. **Registro Administrativo:** A rota `POST /api/auth/register` exige `ADMIN_SETUP_KEY` na propriedade `setupKey` e aplica rate limiting. A criação usa um bloqueio exclusivo no MySQL, impedindo que requisições simultâneas ultrapassem o limite de um administrador; quando um usuário já existe, a API responde com `403 Forbidden`.
 2. **Fluxo de Login:**
    * O cliente envia `email` e `password` para `POST /api/auth/login`.
    * O `authController` busca o usuário pelo e-mail no banco.
    * Se existir, usa o `bcrypt.compare` para bater a senha enviada em texto puro com o *hash* salvo.
-   * Se válido, gera um token JWT (assinado via `JWT_SECRET`) válido por 8 horas e o retorna.
+   * Se válido, gera um token JWT em `HS256` (assinado via `JWT_SECRET`) válido por 8 horas e o retorna. A validação aceita explicitamente somente esse algoritmo.
 
 ### 3.3. WebSockets (Socket.IO)
 * O servidor Node.js escuta eventos WebSocket na mesma porta da API.
@@ -71,13 +73,15 @@ O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Control
 
 ### 3.4. Recuperação de Senha (Forgot Password)
 * O sistema possui um fluxo de recuperação integrado via E-mail utilizando a API do **Resend**.
-* O `authController` intercepta a requisição, gera um token temporário assinado e envia um link parametrizado para o e-mail do administrador, lendo a URL de origem automaticamente.
+* O `authController` devolve a mesma resposta exista ou não uma conta, reduzindo enumeração de usuários. Quando a conta existe, gera um token temporário vinculado à senha atual e envia um link baseado exclusivamente em `FRONTEND_URL`.
 * Ao clicar no link, o Admin acessa a tela `/admin/reset` que consome a rota de validação e altera o *hash* da senha no banco de dados.
+* A senha deve conter de 12 a 128 caracteres. Depois da troca, o token deixa de ser válido e não pode ser reutilizado.
 
 ### 3.5. Formulário de Contato e Rate Limiting
 * Rota pública projetada para a página de contato do Frontend (`POST /api/contact`).
 * Recebe Nome, Email e Mensagem e utiliza a API do **Resend** configurada no `.env` para enviar as mensagens diretamente para a caixa de entrada do desenvolvedor, validando os campos antes do envio.
-* **Proteção Anti-Abuso (Rate Limiting):** A rota de contato é protegida por limite de requisição (máximo de 5 envios por hora por IP) e a rota de login/senha também é limitada (máximo de 10 tentativas a cada 15 minutos por IP) para impedir spams e brute force.
+* Os valores são limitados por tamanho e escapados antes de serem incorporados ao HTML do e-mail.
+* **Proteção Anti-Abuso (Rate Limiting):** A API aplica um limite geral por IP. A rota de contato aceita no máximo 5 envios por hora; cadastro inicial, login e recuperação aceitam no máximo 10 tentativas a cada 15 minutos; as consultas ao GitHub possuem um limite adicional.
 
 ### 3.6. Monitoramento de Banco de Dados
 * O `dbMonitor.js` vigia a disponibilidade do banco de dados na nuvem (Aiven) utilizando as próprias requisições de frontend dos visitantes (como a busca de projetos).
@@ -93,7 +97,7 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 
 ### 4.1. Estrutura de Diretórios
 * `src/App.tsx`: A raiz da árvore de componentes. Ele encapsula o sistema de roteamento (`react-router-dom`) e conecta-se ao `Socket.IO` do servidor. Escuta o evento global `refresh_data` para forçar um recarregamento da página (`window.location.reload()`).
-* `src/contexts/AuthContext.tsx`: Gerenciador de estado global para a autenticação do Admin. Mantém o token JWT na memória local (e no `localStorage`) e expõe métodos `login` e `logout`. Protege a tela de `/admin`.
+* `src/contexts/AuthContext.tsx` e `src/contexts/auth-context.ts`: Provider e contrato do estado de autenticação. O token JWT permanece no `localStorage`, é removido ao expirar e é enviado somente no header `Authorization` das operações administrativas.
 * `src/contexts/LanguageContext.tsx`: Mantém o idioma `pt-BR` ou `en`, persiste a preferência no `localStorage` e atualiza o atributo `lang` do documento.
 * `src/services/api.ts`: Centraliza requisições `fetch` para autenticação, projetos, GitHub, configurações, habilidades e experiências. A URL do backend é definida por `import.meta.env.VITE_API_URL`, com fallback local no código.
 * `src/pages/`:
@@ -112,12 +116,24 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 * Projetos, habilidades e experiências possuem campos com sufixo `_en`. A interface seleciona os campos correspondentes ao idioma ativo; novos cadastros exigem os dados principais nos dois idiomas.
 * O cadastro de currículo exige simultaneamente um PDF em português do Brasil e outro em inglês. A API grava dois itens em `resumes_links`, vinculados pelo mesmo `pairId` e com a mesma posição em `order`.
 * Cada item mantém `language` com os valores `pt-BR` ou `en`. Registros antigos sem `language`, `pairId` ou `order` continuam legíveis e são tratados como registros legados em português.
+* No painel, um registro legado incompleto pode ser vinculado a outro PDF já cadastrado no idioma oposto. Se esse arquivo não existir, também é possível enviar somente o PDF ausente. Em ambos os casos, a API atribui `pairId` e `order` às duas versões sem substituir o arquivo original.
 * A ordem é alterada no painel por par, e a página Sobre apresenta cada versão em português ao lado da respectiva versão em inglês.
 
 ### 4.3. Integração Externa e Controle de Versão (GitHub)
 O backend atua como um proxy (intermediário) para o GitHub:
 * O `githubController.js` utiliza um token de acesso para consultar as APIs GraphQL e REST do GitHub e preparar os dados de contribuições consumidos pelo frontend.
+* As respostas bem-sucedidas ficam em cache na memória por cinco minutos e as rotas possuem rate limiting para reduzir consumo da cota do GitHub.
+* As chamadas externas usam tempo limite. As descrições dos repositórios são mantidas no idioma original informado no GitHub e não são enviadas a um tradutor automático.
 * **Exibição da Versão do Site:** O backend fornece a rota `/api/github/version`, que busca a última *release* do repositório do portfólio no GitHub (ou o SHA curto do último commit como fallback). A versão é exibida de forma global e estilizada no cabeçalho (`Navbar.tsx`) ao lado do logo "Dev".
+
+### 4.4. Controles de segurança para publicação
+
+* O backend aceita requisições com `Origin` apenas dos endereços locais, da URL pública confirmada e das origens configuradas em `FRONTEND_URL`.
+* A API não expõe `X-Powered-By` e envia cabeçalhos contra interpretação incorreta de conteúdo, frames e acesso a sensores.
+* A Vercel adiciona CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` e `Permissions-Policy` às respostas do frontend.
+* Frontend e backend enviam HSTS em produção. A CSP restringe as conexões do frontend ao backend publicado configurado em `frontend/vercel.json`.
+* O endpoint público de configurações utiliza uma lista permitida de chaves. Atualizações administrativas também rejeitam chaves desconhecidas, URLs fora de HTTP/HTTPS e valores excessivamente longos.
+* Uploads de currículo aceitam somente dados identificados como PDF, com assinatura `%PDF-` e tamanho máximo de 5 MB por arquivo.
 
 ---
 

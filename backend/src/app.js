@@ -26,25 +26,61 @@ const contactRoutes = require('./routes/contactRoutes')
 const settingsRoutes = require('./routes/settingsRoutes')
 const skillsRoutes = require('./routes/skillsRoutes')
 const experienceRoutes = require('./routes/experienceRoutes')
+const { apiLimiter } = require('./middleware/rateLimiter')
+const { normalizeHttpOrigin } = require('./utils/security')
 
 const app = express()
 app.set('trust proxy', 1)
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET deve estar configurado com pelo menos 32 caracteres')
+}
+
+const configuredOrigins = (process.env.FRONTEND_URL || '').split(',').map(origin => origin.trim()).filter(Boolean)
+const invalidOrigin = configuredOrigins.find(origin => !normalizeHttpOrigin(origin))
+if (invalidOrigin) {
+  throw new Error('FRONTEND_URL deve conter somente origens HTTP/HTTPS válidas, separadas por vírgula')
+}
+
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://portifolio-kohl-mu.vercel.app',
+  ...configuredOrigins.map(normalizeHttpOrigin)
+])
+const corsOptions = {
+  origin(origin, callback) {
+    callback(null, !origin || allowedOrigins.has(origin))
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+
 const server = http.createServer(app)
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
-  }
+  cors: corsOptions
 })
 
-app.use(cors())
-app.use(express.json({ limit: '10mb' }))
+app.disable('x-powered-by')
+app.use(cors(corsOptions))
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+  next()
+})
+app.use(express.json({ limit: '15mb', type: 'application/json' }))
 
 app.use((req, res, next) => {
   req.io = io
   next()
 })
 
+app.use('/api', apiLimiter)
 app.use('/api/auth', authRoutes)
 app.use('/api/projects', projectRoutes)
 app.use('/api/github', githubRoutes)
@@ -55,6 +91,22 @@ app.use('/api/experiences', experienceRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'API do portfólio funcionando!' })
+})
+
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Rota não encontrada' })
+})
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err)
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Corpo da requisição excede o limite permitido' })
+  }
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'JSON inválido' })
+  }
+  console.error('Erro não tratado na API:', err)
+  res.status(500).json({ error: 'Erro interno do servidor' })
 })
 
 const PORT = process.env.PORT || 3000
@@ -69,18 +121,19 @@ server.listen(PORT, async () => {
     resend.emails.send({
       from: 'onboarding@resend.dev',
       to: targetEmail,
-      subject: `☕ Servidor do Portfólio Acordou!`,
+      subject: 'Servidor do portfólio iniciado',
       html: `
         <h3>Servidor Online!</h3>
-        <p>O seu servidor no Render acabou de inicializar (acordou da hibernação ou foi reiniciado).</p>
+        <p>A instância do backend foi inicializada ou reiniciada.</p>
         <p><strong>Horário:</strong> ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
       `
     }).catch(err => console.error('Erro ao enviar alerta de boot:', err))
+  }
 
-    // 2. Testa a Aiven e roda auto-migrações
-    try {
+  // Testa o banco e garante o schema independentemente da configuração de e-mail.
+  try {
       await pool.query('SELECT 1')
-      console.log('Conexão com a Aiven testada com sucesso no boot.')
+      console.log('Conexão com o banco testada com sucesso no boot.')
       dbMonitor.notifyRecovery()
 
       // Auto-migração das tabelas adicionais
@@ -224,9 +277,8 @@ server.listen(PORT, async () => {
         }
         console.log('Experiências semeadas com sucesso!')
       }
-    } catch (dbError) {
-      console.error('Falha ao conectar na Aiven no boot:', dbError.message)
-      dbMonitor.notifyFailure(dbError)
-    }
+  } catch (dbError) {
+    console.error('Falha ao conectar no banco no boot:', dbError.message)
+    dbMonitor.notifyFailure(dbError)
   }
 })

@@ -7,12 +7,30 @@ async function findByEmail(email) {
   return rows[0]
 }
 
-async function create(email, passwordHash) {
-  const [result] = await pool.query(
-    'INSERT INTO users (email, password_hash) VALUES (?, ?)',
-    [email, passwordHash]
-  )
-  return result.insertId
+async function createFirstAdmin(email, passwordHash) {
+  const connection = await pool.getConnection()
+  const lockName = 'portfolio_first_admin_setup'
+  let lockAcquired = false
+
+  try {
+    const [lockRows] = await connection.query('SELECT GET_LOCK(?, 10) AS acquired', [lockName])
+    lockAcquired = Number(lockRows[0]?.acquired) === 1
+    if (!lockAcquired) throw new Error('Não foi possível obter o bloqueio de criação do administrador')
+
+    const [countRows] = await connection.query('SELECT COUNT(*) AS count FROM users')
+    if (Number(countRows[0].count) > 0) return { created: false }
+
+    const [result] = await connection.query(
+      'INSERT INTO users (email, password_hash) VALUES (?, ?)',
+      [email, passwordHash]
+    )
+    return { created: true, id: result.insertId }
+  } finally {
+    if (lockAcquired) {
+      await connection.query('SELECT RELEASE_LOCK(?)', [lockName]).catch(() => {})
+    }
+    connection.release()
+  }
 }
 
 async function updatePassword(email, passwordHash) {
@@ -22,9 +40,4 @@ async function updatePassword(email, passwordHash) {
   )
 }
 
-async function countUsers() {
-  const [rows] = await pool.query('SELECT COUNT(*) as count FROM users')
-  return rows[0].count
-}
-
-module.exports = { findByEmail, create, updatePassword, countUsers }
+module.exports = { findByEmail, createFirstAdmin, updatePassword }

@@ -1,5 +1,13 @@
 const rateLimit = require('express-rate-limit')
 
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 300,
+  message: { error: 'Muitas requisições. Tente novamente em alguns minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   limit: 10, // limite de 10 tentativas por IP
@@ -16,7 +24,17 @@ const contactLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+const githubLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 120,
+  message: { error: 'Muitas consultas ao GitHub. Tente novamente em alguns minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 module.exports = {
+  apiLimiter,
   loginLimiter,
-  contactLimiter
+  contactLimiter,
+  githubLimiter
 }

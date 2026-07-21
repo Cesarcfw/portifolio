@@ -49,18 +49,20 @@ export default function Contact() {
 
         {/* Links */}
         <div className="flex gap-6 mb-10">
-          <a href={settings.linkedin_url || "https://www.linkedin.com/in/cesarcfw/"} target="_blank"
+          <a href={settings.linkedin_url || "https://www.linkedin.com/in/cesarcfw/"} target="_blank" rel="noreferrer"
             className="text-teal-400 hover:text-blue-300 transition text-sm">
             LinkedIn →
           </a>
-          <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
+          <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank" rel="noreferrer"
             className="text-teal-400 hover:text-blue-300 transition text-sm">
             GitHub →
           </a>
-          <a href={`mailto:${settings.contact_email || "cesarcfwmaluf@gmail.com"}`}
-            className="text-teal-400 hover:text-blue-300 transition text-sm">
-            E-mail →
-          </a>
+          {settings.contact_email && (
+            <a href={`mailto:${settings.contact_email}`}
+              className="text-teal-400 hover:text-blue-300 transition text-sm">
+              E-mail →
+            </a>
+          )}
         </div>
 
         {/* Formulário */}
@@ -78,11 +80,13 @@ export default function Contact() {
             </div>
           )}
 
-          <div className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className="text-sm text-gray-400 mb-1 block">{isEnglish ? 'Name' : 'Nome'}</label>
               <input
                 type="text"
+                maxLength={100}
+                required
                 name="name"
                 value={form.name}
                 onChange={handleChange}
@@ -94,6 +98,8 @@ export default function Contact() {
               <label className="text-sm text-gray-400 mb-1 block">E-mail</label>
               <input
                 type="email"
+                maxLength={254}
+                required
                 name="email"
                 value={form.email}
                 onChange={handleChange}
@@ -109,17 +115,19 @@ export default function Contact() {
                 onChange={handleChange}
                 placeholder={isEnglish ? 'Your message...' : 'Sua mensagem...'}
                 rows={5}
+                maxLength={5000}
+                required
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
               />
             </div>
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={status === 'sending'}
               className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 px-6 py-3 rounded-lg font-medium transition"
             >
               {status === 'sending' ? (isEnglish ? 'Sending...' : 'Enviando...') : (isEnglish ? 'Send message' : 'Enviar mensagem')}
             </button>
-          </div>
+          </form>
         </div>
       </section>
     </main>

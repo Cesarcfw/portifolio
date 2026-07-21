@@ -1,9 +1,24 @@
 const settingsModel = require('../models/settingsModel')
+const { getPdfBase64, isHttpUrl, isValidEmail, normalizeEmail } = require('../utils/security')
+const { linkExistingResumeRecords } = require('../utils/resumePairs')
+
+const EDITABLE_SETTING_KEYS = new Set([
+  'about_me_text', 'about_me_text_en',
+  'availability_text', 'availability_text_en',
+  'job_status_text', 'job_status_text_en',
+  'resumes_description', 'resumes_description_en',
+  'linkedin_url', 'github_url', 'whatsapp_url', 'contact_email'
+])
+const PUBLIC_SETTING_KEYS = new Set([...EDITABLE_SETTING_KEYS, 'resumes_links'])
+const URL_SETTING_KEYS = new Set(['linkedin_url', 'github_url', 'whatsapp_url'])
 
 async function getSettings(req, res) {
   try {
     const settings = await settingsModel.getAllSettings()
-    res.json(settings)
+    const publicSettings = Object.fromEntries(
+      Object.entries(settings).filter(([key]) => PUBLIC_SETTING_KEYS.has(key))
+    )
+    res.json(publicSettings)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar configurações' })
   }
@@ -11,8 +26,24 @@ async function getSettings(req, res) {
 
 async function updateSettings(req, res) {
   const settings = req.body
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    return res.status(400).json({ error: 'Configurações inválidas' })
+  }
+
   try {
-    for (const [key, value] of Object.entries(settings)) {
+    const entries = Object.entries(settings)
+    for (const [key, value] of entries) {
+      if (!EDITABLE_SETTING_KEYS.has(key) || typeof value !== 'string' || value.length > 5000) {
+        return res.status(400).json({ error: `Configuração inválida: ${key}` })
+      }
+      if (URL_SETTING_KEYS.has(key) && !isHttpUrl(value)) {
+        return res.status(400).json({ error: `URL inválida: ${key}` })
+      }
+      if (key === 'contact_email' && value && !isValidEmail(normalizeEmail(value))) {
+        return res.status(400).json({ error: 'E-mail de contato inválido' })
+      }
+    }
+    for (const [key, value] of entries) {
       await settingsModel.updateSetting(key, value)
     }
     req.io.emit('refresh_data')
@@ -36,8 +67,13 @@ async function saveResumes(resumes) {
 }
 
 async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64Data, name }) {
-  const base64Content = base64Data.split(',')[1] || base64Data
-  const githubUrl = `https://api.github.com/repos/${githubUsername}/portifolio/contents/frontend/public/curriculos/${filename}`
+  const base64Content = getPdfBase64(base64Data)
+  if (!base64Content) {
+    const error = new Error('O arquivo deve ser um PDF válido com no máximo 5 MB')
+    error.status = 400
+    throw error
+  }
+  const githubUrl = `https://api.github.com/repos/${encodeURIComponent(githubUsername)}/portifolio/contents/frontend/public/curriculos/${encodeURIComponent(filename)}`
   const response = await fetch(githubUrl, {
     method: 'PUT',
     headers: {
@@ -45,6 +81,7 @@ async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64
       'Content-Type': 'application/json',
       Accept: 'application/vnd.github.v3+json'
     },
+    signal: AbortSignal.timeout(15 * 1000),
     body: JSON.stringify({
       message: `feat: upload currículo ${name} via painel admin`,
       content: base64Content,
@@ -68,7 +105,12 @@ async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64
 async function uploadResume(req, res) {
   const { portuguese, english } = req.body
 
-  if (!portuguese?.name || !portuguese?.base64Data || !english?.name || !english?.base64Data) {
+  if (typeof portuguese?.name !== 'string' || typeof portuguese?.base64Data !== 'string' ||
+      typeof english?.name !== 'string' || typeof english?.base64Data !== 'string' ||
+      !portuguese.name.trim() || !english.name.trim() ||
+      portuguese.name.length > 150 || english.name.length > 150 ||
+      (typeof portuguese.description === 'string' ? portuguese.description.length : 0) > 1000 ||
+      (typeof english.description === 'string' ? english.description.length : 0) > 1000) {
     return res.status(400).json({ error: 'Os currículos em português e inglês são obrigatórios' })
   }
 
@@ -105,8 +147,8 @@ async function uploadResume(req, res) {
         id: pairId,
         pairId,
         order: nextOrder,
-        name: portuguese.name,
-        description: portuguese.description || '',
+        name: portuguese.name.trim(),
+        description: typeof portuguese.description === 'string' ? portuguese.description : '',
         language: 'pt-BR',
         url: `/curriculos/${portugueseFilename}`
       },
@@ -114,8 +156,8 @@ async function uploadResume(req, res) {
         id: pairId + 1,
         pairId,
         order: nextOrder,
-        name: english.name,
-        description: english.description || '',
+        name: english.name.trim(),
+        description: typeof english.description === 'string' ? english.description : '',
         language: 'en',
         url: `/curriculos/${englishFilename}`
       }
@@ -128,6 +170,104 @@ async function uploadResume(req, res) {
     console.error('Erro no uploadResume:', err)
     const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500
     res.status(status).json({ error: `Erro no GitHub: ${err.message}` })
+  }
+}
+
+async function uploadResumeCounterpart(req, res) {
+  const id = Number(req.params.id)
+  const { name, description, base64Data } = req.body
+
+  if (!Number.isFinite(id) || typeof name !== 'string' || !name.trim() || name.length > 150 ||
+      typeof base64Data !== 'string' ||
+      (typeof description === 'string' ? description.length : 0) > 1000) {
+    return res.status(400).json({ error: 'Nome e arquivo da versão ausente são obrigatórios' })
+  }
+
+  try {
+    const resumes = await getResumes()
+    const selectedIndex = resumes.findIndex(resume => resume.id === id)
+    if (selectedIndex === -1) {
+      return res.status(404).json({ error: 'Currículo original não encontrado' })
+    }
+
+    const selected = resumes[selectedIndex]
+    const selectedLanguage = selected.language || 'pt-BR'
+    const missingLanguage = selectedLanguage === 'en' ? 'pt-BR' : 'en'
+    const pairId = selected.pairId || selected.id
+    const counterpartExists = resumes.some(resume =>
+      String(resume.pairId || resume.id) === String(pairId) &&
+      (resume.language || 'pt-BR') === missingLanguage
+    )
+
+    if (counterpartExists) {
+      return res.status(409).json({ error: 'Este currículo já possui as duas versões' })
+    }
+
+    const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
+    const githubToken = (process.env.GITHUB_TOKEN || '').trim()
+    if (!githubUsername || !githubToken) {
+      return res.status(500).json({ error: 'Integração com GitHub não configurada' })
+    }
+
+    let newId = Date.now()
+    while (resumes.some(resume => resume.id === newId)) newId += 1
+
+    const filename = missingLanguage === 'en'
+      ? `resume-en-${newId}.pdf`
+      : `curriculo-pt-br-${newId}.pdf`
+
+    await uploadPdfToGithub({
+      githubUsername,
+      githubToken,
+      filename,
+      base64Data,
+      name
+    })
+
+    const parsedOrder = Number(selected.order)
+    const order = Number.isFinite(parsedOrder) ? parsedOrder : selectedIndex
+    const updatedOriginal = { ...selected, pairId, order, language: selectedLanguage }
+    const counterpart = {
+      id: newId,
+      pairId,
+      order,
+      name: name.trim(),
+      description: typeof description === 'string' ? description : '',
+      language: missingLanguage,
+      url: `/curriculos/${filename}`
+    }
+    const updated = resumes.map((resume, index) => index === selectedIndex ? updatedOriginal : resume)
+    updated.push(counterpart)
+
+    await saveResumes(updated)
+    req.io.emit('refresh_data')
+    res.json({ message: 'Versão ausente adicionada com sucesso', resume: counterpart })
+  } catch (err) {
+    console.error('Erro no uploadResumeCounterpart:', err)
+    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500
+    res.status(status).json({ error: `Erro no GitHub: ${err.message}` })
+  }
+}
+
+async function linkResumeCounterparts(req, res) {
+  const portugueseId = Number(req.body.portugueseId)
+  const englishId = Number(req.body.englishId)
+
+  if (!Number.isInteger(portugueseId) || !Number.isInteger(englishId) ||
+      portugueseId <= 0 || englishId <= 0 || portugueseId === englishId) {
+    return res.status(400).json({ error: 'Selecione dois currículos válidos e diferentes' })
+  }
+
+  try {
+    const resumes = await getResumes()
+    const { updated, pairId } = linkExistingResumeRecords(resumes, portugueseId, englishId)
+
+    await saveResumes(updated)
+    req.io.emit('refresh_data')
+    res.json({ message: 'Currículos existentes vinculados com sucesso', pairId })
+  } catch (err) {
+    const status = Number.isInteger(err.status) ? err.status : 500
+    res.status(status).json({ error: status === 500 ? 'Erro ao vincular os currículos existentes' : err.message })
   }
 }
 
@@ -176,7 +316,10 @@ async function removeResumePair(req, res) {
 }
 
 async function removeResume(req, res) {
-  const id = parseInt(req.params.id)
+  const id = Number(req.params.id)
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID de currículo inválido' })
+  }
   try {
     const resumes = await getResumes()
     const selectedResume = resumes.find(resume => resume.id === id)
@@ -195,10 +338,11 @@ async function removeResume(req, res) {
 }
 
 async function editResume(req, res) {
-  const id = parseInt(req.params.id)
+  const id = Number(req.params.id)
   const { name, description, language = 'pt-BR' } = req.body
+  const normalizedDescription = typeof description === 'string' ? description : ''
 
-  if (!name) {
+  if (!Number.isSafeInteger(id) || id <= 0 || typeof name !== 'string' || !name.trim() || name.length > 150 || normalizedDescription.length > 1000) {
     return res.status(400).json({ error: 'O nome é obrigatório' })
   }
 
@@ -215,8 +359,8 @@ async function editResume(req, res) {
       return res.status(404).json({ error: 'Currículo não encontrado' })
     }
 
-    resumes[resumeIndex].name = name
-    resumes[resumeIndex].description = description || ''
+    resumes[resumeIndex].name = name.trim()
+    resumes[resumeIndex].description = normalizedDescription
     // A versão de um par não pode trocar de idioma e deixar o par inconsistente.
     if (!resumes[resumeIndex].pairId) {
       resumes[resumeIndex].language = language
@@ -231,4 +375,4 @@ async function editResume(req, res) {
   }
 }
 
-module.exports = { getSettings, updateSettings, uploadResume, reorderResumePairs, removeResumePair, removeResume, editResume }
+module.exports = { getSettings, updateSettings, uploadResume, uploadResumeCounterpart, linkResumeCounterparts, reorderResumePairs, removeResumePair, removeResume, editResume }

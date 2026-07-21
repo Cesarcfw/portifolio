@@ -2,12 +2,19 @@
   "name": "portifolio",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
-    "db:migrate": "node backend/src/database/migrate.js",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "npm run build --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "test": "npm test --prefix backend",
+    "check": "npm run test && npm run lint && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

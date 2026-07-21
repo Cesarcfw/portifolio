@@ -1,28 +1,25 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
+import { AuthContext } from './auth-context'
 
-interface AuthContextType {
-  token: string | null
-  login: (token: string) => void
-  logout: () => void
-  isAuthenticated: boolean
+function getTokenExpiration(currentToken: string | null): number | null {
+  if (!currentToken) return null
+  try {
+    const encodedPayload = currentToken.split('.')[1]
+    if (!encodedPayload) return null
+    const base64 = encodedPayload.replaceAll('-', '+').replaceAll('_', '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    const payload = JSON.parse(atob(padded))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
 }
-
-const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   function checkToken(currentToken: string | null) {
-    if (!currentToken) return false
-    try {
-      // O JWT tem 3 partes separadas por '.', a segunda é o payload
-      const payload = JSON.parse(atob(currentToken.split('.')[1]))
-      if (payload.exp * 1000 < Date.now()) {
-        return false // Expirado
-      }
-      return true
-    } catch {
-      return false
-    }
+    const expiration = getTokenExpiration(currentToken)
+    return expiration !== null && expiration > Date.now()
   }
 
   const [token, setToken] = useState<string | null>(() => {
@@ -39,39 +36,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken)
   }
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem('portfolio_token')
     setToken(null)
-  }
+  }, [])
 
   // Desconectar automaticamente quando o token expirar
   useEffect(() => {
     if (!token) return
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const timeLeft = payload.exp * 1000 - Date.now()
-      
-      if (timeLeft <= 0) {
-        logout()
-      } else {
-        const timer = setTimeout(() => {
-          alert('Sua sessão expirou. Por favor, faça login novamente.')
-          logout()
-        }, timeLeft)
-        return () => clearTimeout(timer)
-      }
-    } catch {
+    const expiration = getTokenExpiration(token)
+    const timeLeft = Math.max(0, (expiration || 0) - Date.now())
+    const timer = setTimeout(() => {
+      if (timeLeft > 0) alert('Sua sessão expirou. Por favor, faça login novamente.')
       logout()
-    }
-  }, [token])
+    }, timeLeft)
+    return () => clearTimeout(timer)
+  }, [token, logout])
 
   return (
     <AuthContext.Provider value={{ token, login, logout, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  return useContext(AuthContext)
 }

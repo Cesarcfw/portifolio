@@ -158,12 +158,12 @@ export default function Projects() {
                 </div>
                 <div className="flex gap-4">
                   {project.github_url && (
-                    <a href={project.github_url} target="_blank" className="text-sm text-gray-400 hover:text-white transition">
+                    <a href={project.github_url} target="_blank" rel="noreferrer" className="text-sm text-gray-400 hover:text-white transition">
                       GitHub →
                     </a>
                   )}
                   {project.live_url && (
-                    <a href={project.live_url} target="_blank" className="text-sm text-teal-400 hover:text-blue-300 transition">
+                    <a href={project.live_url} target="_blank" rel="noreferrer" className="text-sm text-teal-400 hover:text-blue-300 transition">
                       {isEnglish ? 'View project' : 'Ver projeto'} →
                     </a>
                   )}
@@ -182,7 +182,7 @@ export default function Projects() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {repos.map(repo => (
-              <a key={repo.id} href={repo.url} target="_blank"
+              <a key={repo.id} href={repo.url} target="_blank" rel="noreferrer"
                 className="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-blue-500 transition block">
                 <h3 className="font-semibold mb-1">{repo.name}</h3>
                 <p className="text-gray-400 text-sm mb-3 line-clamp-2">

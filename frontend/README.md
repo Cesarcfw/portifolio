@@ -7,11 +7,13 @@ Interface web do portfólio, implementada como uma SPA com React, TypeScript e V
 - Páginas inicial, projetos, sobre e contato.
 - Seletor entre português do Brasil e inglês, com preferência salva em `localStorage`.
 - Exibição dos currículos em pares ordenados, mantendo as versões em português do Brasil e inglês lado a lado.
+- Formulário administrativo para vincular dois PDFs legados já existentes ou enviar a versão ausente antes da organização em pares.
 - Seleção dos campos traduzidos de projetos, habilidades, experiências e configurações conforme o idioma ativo.
 - Painel administrativo e tela de redefinição de senha.
 - Consumo centralizado da API REST do backend.
 - Atualização após eventos `refresh_data` recebidos por Socket.IO.
 - Layout responsivo com Tailwind CSS.
+- Cabeçalhos de segurança configurados no deploy da Vercel.
 
 ## Variável de ambiente
 
@@ -48,11 +50,15 @@ O Vite utiliza `http://localhost:5173` por padrão na configuração atual.
 ## Estrutura
 
 - `src/components`: componentes compartilhados.
-- `src/contexts`: contexto de autenticação.
+- `src/contexts`: providers e definições de contexto para autenticação e idioma.
 - `src/contexts/LanguageContext.tsx`: idioma ativo da interface pública.
 - `src/pages`: páginas e painel administrativo.
 - `src/services`: cliente da API.
 
 ## Deploy
 
-O arquivo `vercel.json` configura o redirecionamento das rotas da SPA para `index.html`. No ambiente publicado, `VITE_API_URL` deve apontar para a URL do backend.
+O arquivo `vercel.json` configura o redirecionamento das rotas da SPA para `index.html` e cabeçalhos como CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` e `Permissions-Policy`. No ambiente publicado, `VITE_API_URL` deve apontar para a URL do backend.
+
+A diretiva `connect-src` da CSP lista explicitamente o backend publicado. Se a API mudar de domínio, atualize essa diretiva e `VITE_API_URL` no mesmo deploy.
+
+Somente a URL pública da API deve usar o prefixo `VITE_`. Tokens, senhas e chaves não podem ser definidos em variáveis `VITE_*`, pois são incluídos no bundle entregue ao navegador.

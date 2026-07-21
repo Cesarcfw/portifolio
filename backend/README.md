@@ -8,11 +8,13 @@ API REST em Node.js e Express responsável por autenticação, regras de negóci
 - CRUD de projetos, habilidades e experiências.
 - Gerenciamento de configurações e pares de currículos.
 - Cadastro conjunto das versões em português do Brasil (`pt-BR`) e inglês (`en`), vinculadas por `pairId` e ordenadas por `order` no JSON armazenado em `settings`.
+- Vínculo entre PDFs legados já cadastrados ou complementação pela inclusão da versão ausente, sem substituir o arquivo original.
 - Persistência das versões em inglês de projetos, habilidades e experiências em colunas com sufixo `_en`.
 - Consulta às APIs REST e GraphQL do GitHub.
 - Envio de contatos, recuperação de senha e alertas com Resend.
 - Eventos `refresh_data` via Socket.IO.
-- Rate limiting nas rotas de autenticação e contato.
+- Rate limiting geral da API e limites adicionais nas rotas de autenticação, contato e GitHub, com cache temporário para consultas externas.
+- CORS restrito, cabeçalhos HTTP de segurança, validação de entradas e escape do conteúdo enviado por e-mail.
 
 ## Variáveis de ambiente
 
@@ -24,6 +26,8 @@ cp .env.example .env
 
 As variáveis reconhecidas pelo código estão documentadas em [`backend/.env.example`](./.env.example) e no [README principal](../README.md#-variáveis-de-ambiente). Não armazene tokens, senhas ou chaves reais no repositório.
 
+`JWT_SECRET` deve possuir pelo menos 32 caracteres. `FRONTEND_URL` define as origens HTTP/HTTPS adicionais aceitas pelo CORS e pode receber uma lista sem caminhos, separada por vírgulas. `ADMIN_SETUP_KEY` é enviada apenas no corpo da criação do primeiro administrador e nunca deve ser exposta no frontend.
+
 ## Banco de dados
 
 Crie previamente o banco MySQL indicado por `DB_NAME`. Depois, a partir da raiz do repositório, execute:
@@ -34,7 +38,7 @@ npm run db:migrate
 
 O comando deve ser executado na raiz do repositório. Ele chama `backend/src/database/migrate.js`, que cria as tabelas `users`, `projects`, `settings`, `skills` e `experiences`, mas não cria o banco MySQL.
 
-Ao iniciar a API, `src/app.js` também possui uma rotina que garante as tabelas `settings`, `skills` e `experiences` e preenche `skills` e `experiences` quando estão vazias. Essa rotina está condicionada à presença de `RESEND_API_KEY` e de `MY_EMAIL` ou `EMAIL_USER`.
+Ao iniciar a API, `src/app.js` também possui uma rotina que garante as tabelas `settings`, `skills` e `experiences` e preenche `skills` e `experiences` quando estão vazias. Essa rotina é executada independentemente da configuração do Resend.
 
 ## Comandos
 
@@ -49,6 +53,8 @@ npm run dev
 | --- | --- |
 | `npm run dev` | Inicia a API com reinicialização automática pelo nodemon. |
 | `npm start` | Inicia a API com Node.js. |
+| `npm run db:migrate` | Cria ou atualiza as cinco tabelas usando as variáveis de `backend/.env`. |
+| `npm test` | Executa os testes locais com o test runner nativo do Node.js. |
 
 Quando `PORT` não é definida, a API usa `http://localhost:3000`.
 
@@ -63,3 +69,17 @@ Quando `PORT` não é definida, a API usa `http://localhost:3000`.
 - `/api/experiences`: consulta e gerenciamento de experiências.
 
 As operações administrativas de alteração são protegidas por autenticação, conforme definido nas rotas do backend.
+
+## Controles de segurança
+
+- O cadastro inicial exige `ADMIN_SETUP_KEY` e fica indisponível depois da criação do primeiro usuário.
+- A criação inicial utiliza um bloqueio exclusivo no MySQL para impedir que requisições concorrentes criem mais de um administrador.
+- Senhas novas exigem de 12 a 128 caracteres; links de recuperação usam a origem configurada em `FRONTEND_URL`.
+- O retorno da recuperação de senha não confirma se um e-mail está cadastrado.
+- Tokens de recuperação são vinculados à senha atual e não podem ser reutilizados após uma redefinição bem-sucedida.
+- PDFs são validados pelo tipo, assinatura inicial e limite de 5 MB antes do envio ao GitHub.
+- O token do GitHub deve ser refinado e limitado ao repositório do portfólio, com acesso de conteúdo compatível com as consultas e o upload de PDFs.
+- A conexão MySQL remota valida o certificado TLS por padrão. Quando o provedor fornecer uma CA, codifique o arquivo em Base64 e configure `DB_SSL_CA_BASE64`. Defina `DB_SSL_REJECT_UNAUTHORIZED=false` apenas temporariamente e com o risco conhecido.
+- As chamadas ao GitHub possuem tempo limite para que indisponibilidades externas não mantenham requisições abertas indefinidamente.
+
+No fluxo atual, remover um currículo pelo painel remove seu metadado de `resumes_links`, mas não apaga o PDF já versionado nem seu histórico no GitHub. A exclusão completa deve ser tratada em uma alteração futura e coordenada no repositório.

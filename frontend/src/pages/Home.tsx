@@ -64,6 +64,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [hoveredDay, setHoveredDay] = useState<ContributionDay | null>(null)
+  const availabilityReference = settings.availability_text || ''
 
   useEffect(() => {
     async function loadData() {
@@ -191,13 +192,13 @@ export default function Home() {
     <div className="flex flex-wrap justify-center gap-3 mb-8">
       {(isEnglish ? settings.availability_text_en : settings.availability_text) && (
         <div className={`inline-flex items-center gap-2 border text-sm px-4 py-2 rounded-full ${
-          settings.availability_text.includes('Agora') ? 'bg-green-500/10 border-green-500/20 text-green-400' :
-          settings.availability_text.includes('propostas') ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
+          availabilityReference.includes('Agora') ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+          availabilityReference.includes('propostas') ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
           'bg-red-500/10 border-red-500/20 text-red-400'
         }`}>
           <span className={`w-2 h-2 rounded-full ${
-            settings.availability_text.includes('Agora') ? 'bg-green-400 animate-pulse' :
-            settings.availability_text.includes('propostas') ? 'bg-yellow-400' :
+            availabilityReference.includes('Agora') ? 'bg-green-400 animate-pulse' :
+            availabilityReference.includes('propostas') ? 'bg-yellow-400' :
             'bg-red-400'
           }`} />
           {isEnglish ? settings.availability_text_en : settings.availability_text}
@@ -279,13 +280,13 @@ export default function Home() {
               </div>
               <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 {project.github_url && (
-                  <a href={project.github_url} target="_blank"
+                  <a href={project.github_url} target="_blank" rel="noreferrer"
                     className="text-gray-400 hover:text-white text-xs transition">
                     GitHub
                   </a>
                 )}
                 {project.live_url && (
-                  <a href={project.live_url} target="_blank"
+                  <a href={project.live_url} target="_blank" rel="noreferrer"
                     className="text-teal-400 hover:text-blue-300 text-xs transition">
                     Live →
                   </a>
@@ -328,7 +329,7 @@ export default function Home() {
       <span className="bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">{contributions.total}</span>{' '}
       {isEnglish ? 'contributions in the last year' : 'contribuições no último ano'}
     </h2>
-    <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
+    <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank" rel="noreferrer"
       className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
       {isEnglish ? 'View profile' : 'Ver perfil'} →
     </a>
@@ -419,7 +420,7 @@ export default function Home() {
   </div>
   <div className="flex items-center justify-between mb-10">
     <h2 className="text-3xl font-bold">{isEnglish ? 'Repositories' : 'Repositórios'}</h2>
-    <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank"
+    <a href={settings.github_url || "https://github.com/Cesarcfw"} target="_blank" rel="noreferrer"
       className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
       {isEnglish ? 'View all' : 'Ver todos'} →
     </a>
@@ -430,7 +431,7 @@ export default function Home() {
   ) : (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {repos.slice(0, 6).map(repo => (
-        <a key={repo.id} href={repo.url} target="_blank"
+        <a key={repo.id} href={repo.url} target="_blank" rel="noreferrer"
           className="group bg-gray-900/50 rounded-xl p-5 border border-gray-800 hover:border-blue-500/50 transition-all duration-300 block hover:shadow-lg hover:shadow-blue-500/5">
           
           <div className="flex items-start justify-between mb-3">

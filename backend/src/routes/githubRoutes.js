@@ -1,6 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const { getRepos, getContributions, getLanguages, getPortfolioVersion } = require('../controllers/githubController')
+const { githubLimiter } = require('../middleware/rateLimiter')
+
+router.use(githubLimiter)
 
 router.get('/repos', getRepos)
 router.get('/contributions', getContributions)
