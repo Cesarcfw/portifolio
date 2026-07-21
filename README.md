@@ -153,8 +153,8 @@ Esse comando executa os testes do backend, o ESLint do frontend e o build de pro
 | `DB_NAME` | Nome do banco de dados. |
 | `DB_USER` | Usuário do banco. |
 | `DB_PASSWORD` | Senha do banco. |
-| `DB_SSL_REJECT_UNAUTHORIZED` | Controla a validação do certificado TLS do MySQL remoto; o padrão seguro é `true`. |
-| `DB_SSL_CA_BASE64` | Certificado CA do MySQL remoto codificado em Base64, quando fornecido pelo provedor. |
+| `DB_SSL_REJECT_UNAUTHORIZED` | Sobrescrita opcional da validação TLS. Com uma CA configurada, a validação fica ativa por padrão; use `false` somente para diagnóstico. |
+| `DB_SSL_CA_BASE64` | Certificado CA do MySQL remoto codificado em Base64. Sem esse valor, a conexão remota permanece criptografada, mas não valida a CA privada do provedor. |
 | `JWT_SECRET` | Chave com pelo menos 32 caracteres usada para assinar e validar tokens JWT. |
 | `ADMIN_SETUP_KEY` | Chave secreta exigida somente na criação do primeiro administrador. |
 | `GITHUB_USERNAME` | Usuário consultado nas APIs do GitHub. |
