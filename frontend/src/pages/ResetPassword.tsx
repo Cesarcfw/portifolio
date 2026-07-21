@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { resetPassword } from '../services/api'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -6,13 +6,17 @@ import { useLanguage } from '../contexts/LanguageContext'
 export default function ResetPassword() {
   const { isEnglish } = useLanguage()
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  const [token] = useState(() => searchParams.get('token'))
   const navigate = useNavigate()
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (token) window.history.replaceState({}, document.title, window.location.pathname)
+  }, [token])
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
@@ -24,8 +28,8 @@ export default function ResetPassword() {
       setError(isEnglish ? 'Passwords do not match.' : 'As senhas não coincidem.')
       return
     }
-    if (password.length < 6) {
-      setError(isEnglish ? 'The password must contain at least 6 characters.' : 'A senha deve ter pelo menos 6 caracteres.')
+    if (password.length < 12 || password.length > 128) {
+      setError(isEnglish ? 'The password must contain between 12 and 128 characters.' : 'A senha deve ter entre 12 e 128 caracteres.')
       return
     }
 
@@ -35,7 +39,7 @@ export default function ResetPassword() {
     const data = await resetPassword(token, password)
     if (data.error) {
       setMessage('')
-      setError(data.error)
+      setError(isEnglish ? 'The recovery link is invalid, expired, or has already been used.' : data.error)
     } else {
       setMessage(isEnglish ? 'Password updated successfully. Redirecting...' : 'Senha atualizada com sucesso! Redirecionando...')
       setTimeout(() => {
@@ -63,6 +67,10 @@ export default function ResetPassword() {
         <form onSubmit={handleReset} className="flex flex-col gap-4">
           <input
             type="password"
+            autoComplete="new-password"
+            minLength={12}
+            maxLength={128}
+            required
             placeholder={isEnglish ? 'New password' : 'Nova senha'}
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -70,6 +78,10 @@ export default function ResetPassword() {
           />
           <input
             type="password"
+            autoComplete="new-password"
+            minLength={12}
+            maxLength={128}
+            required
             placeholder={isEnglish ? 'Confirm new password' : 'Confirmar nova senha'}
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}

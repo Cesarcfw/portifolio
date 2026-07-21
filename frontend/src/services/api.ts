@@ -100,6 +100,30 @@ export async function uploadResumePair(token: string, portuguese: ResumeUploadDa
   return res.json()
 }
 
+export async function uploadResumeCounterpart(token: string, resumeId: number, counterpart: ResumeUploadData) {
+  const res = await fetch(`${BASE_URL}/settings/resume/${resumeId}/counterpart`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(counterpart)
+  })
+  return res.json()
+}
+
+export async function linkResumeCounterparts(token: string, portugueseId: number, englishId: number) {
+  const res = await fetch(`${BASE_URL}/settings/resume/link`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ portugueseId, englishId })
+  })
+  return res.json()
+}
+
 export async function reorderResumePairs(token: string, pairIds: Array<number | string>) {
   const res = await fetch(`${BASE_URL}/settings/resume/order`, {
     method: 'PUT',

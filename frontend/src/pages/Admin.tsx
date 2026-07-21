@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/auth-context'
 import { 
   login as loginApi, 
   getProjects, 
@@ -7,6 +7,8 @@ import {
   getSettings, 
   updateSettings, 
   uploadResumePair,
+  uploadResumeCounterpart,
+  linkResumeCounterparts,
   reorderResumePairs,
   removeResumePair,
   editResume,
@@ -89,6 +91,13 @@ function getResumePairs(resumes: Resume[]): ResumePair[] {
   return [...pairs.values()].sort((a, b) => a.order - b.order)
 }
 
+function getUnpairedCandidates(resumes: Resume[], language: 'pt-BR' | 'en', excludedPairId: number | string) {
+  return getResumePairs(resumes)
+    .filter(pair => String(pair.pairId) !== String(excludedPairId) && (!pair.portuguese || !pair.english))
+    .map(pair => language === 'en' ? pair.english : pair.portuguese)
+    .filter((resume): resume is Resume => Boolean(resume))
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 export default function Admin() {
@@ -141,6 +150,11 @@ export default function Admin() {
   const [resumeEnFile, setResumeEnFile] = useState<File | null>(null)
   const [resumeMessage, setResumeMessage] = useState('')
   const [editingResumeId, setEditingResumeId] = useState<number | null>(null)
+  const [completingResumeId, setCompletingResumeId] = useState<number | null>(null)
+  const [counterpartName, setCounterpartName] = useState('')
+  const [counterpartDescription, setCounterpartDescription] = useState('')
+  const [counterpartFile, setCounterpartFile] = useState<File | null>(null)
+  const [selectedLegacyCounterparts, setSelectedLegacyCounterparts] = useState<Record<number, string>>({})
 
   // Skills States
   const [skills, setSkills] = useState<Skill[]>([])
@@ -270,6 +284,81 @@ export default function Admin() {
       setResumeLanguage('pt-BR')
       loadData()
     }
+  }
+
+  async function handleUploadCounterpart(e: React.FormEvent, originalResume: Resume) {
+    e.preventDefault()
+    if (!counterpartName || !counterpartFile) {
+      setResumeMessage('Informe o nome e selecione o PDF da versão ausente.')
+      return
+    }
+
+    setResumeMessage('Enviando a versão ausente para o GitHub...')
+    try {
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(counterpartFile)
+      })
+      const result = await uploadResumeCounterpart(token!, originalResume.id, {
+        name: counterpartName,
+        description: counterpartDescription,
+        base64Data
+      })
+
+      if (result.error) {
+        setResumeMessage(result.error)
+        return
+      }
+
+      setResumeMessage('Versão ausente adicionada com sucesso!')
+      cancelCompleteResume()
+      loadData()
+    } catch {
+      setResumeMessage('Erro ao ler ou enviar o arquivo.')
+    }
+  }
+
+  function startCompleteResume(originalResume: Resume) {
+    setCompletingResumeId(originalResume.id)
+    setCounterpartName('')
+    setCounterpartDescription('')
+    setCounterpartFile(null)
+  }
+
+  function cancelCompleteResume() {
+    setCompletingResumeId(null)
+    setCounterpartName('')
+    setCounterpartDescription('')
+    setCounterpartFile(null)
+  }
+
+  async function handleLinkExistingCounterpart(originalResume: Resume, missingLanguage: 'pt-BR' | 'en') {
+    const selectedId = Number(selectedLegacyCounterparts[originalResume.id])
+    if (!Number.isInteger(selectedId)) {
+      setResumeMessage('Selecione um currículo existente para vincular.')
+      return
+    }
+
+    setResumeMessage('Vinculando os currículos existentes...')
+    const result = await linkResumeCounterparts(
+      token!,
+      missingLanguage === 'pt-BR' ? selectedId : originalResume.id,
+      missingLanguage === 'en' ? selectedId : originalResume.id
+    )
+    if (result.error) {
+      setResumeMessage(result.error)
+      return
+    }
+
+    setSelectedLegacyCounterparts(current => {
+      const next = { ...current }
+      delete next[originalResume.id]
+      return next
+    })
+    setResumeMessage('Currículos existentes vinculados com sucesso!')
+    loadData()
   }
 
   function startEditResume(r: Resume) {
@@ -497,6 +586,9 @@ export default function Admin() {
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <input
               type="email"
+              autoComplete="username"
+              maxLength={254}
+              required
               placeholder="E-mail"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -504,6 +596,9 @@ export default function Admin() {
             />
             <input
               type="password"
+              autoComplete="current-password"
+              maxLength={128}
+              required
               placeholder="Senha"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -781,15 +876,79 @@ export default function Admin() {
                             <div className="font-medium">{resume.name}</div>
                             {resume.description && <div className="text-sm text-gray-400 mt-1">{resume.description}</div>}
                             <div className="flex items-center justify-between mt-3">
-                              <a href={resume.url} target="_blank" className="text-xs text-blue-400 hover:underline">Abrir PDF</a>
+                              <a href={resume.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">Abrir PDF</a>
                               <button onClick={() => startEditResume(resume)} className="text-sm text-blue-400">Editar</button>
                             </div>
                           </>
                         )}
                       </div>
                     ) : (
-                      <div key={resumeIndex} className="border border-dashed border-yellow-600/50 text-yellow-400/80 rounded-lg p-4 text-sm">
-                        Versão {resumeIndex === 0 ? 'em português' : 'em inglês'} ausente — registro legado.
+                      <div key={resumeIndex} className="border border-dashed border-yellow-600/50 rounded-lg p-4 text-sm">
+                        <div className="text-yellow-400/80 mb-3">
+                          Versão {resumeIndex === 0 ? 'em português' : 'em inglês'} ausente — registro legado.
+                        </div>
+                        {(() => {
+                          const originalResume = (pair.portuguese || pair.english)!
+                          const missingLanguage = resumeIndex === 0 ? 'pt-BR' : 'en'
+                          const existingCandidates = getUnpairedCandidates(resumes, missingLanguage, pair.pairId)
+                          return existingCandidates.length > 0 ? (
+                            <div className="mb-4 flex flex-col gap-2">
+                              <label className="text-xs text-gray-400">Vincular um PDF já cadastrado</label>
+                              <select
+                                value={selectedLegacyCounterparts[originalResume.id] || ''}
+                                onChange={e => setSelectedLegacyCounterparts(current => ({ ...current, [originalResume.id]: e.target.value }))}
+                                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                              >
+                                <option value="">Selecione...</option>
+                                {existingCandidates.map(candidate => (
+                                  <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => handleLinkExistingCounterpart(originalResume, missingLanguage)}
+                                className="self-start text-blue-400 hover:text-blue-300"
+                              >
+                                Vincular currículo existente
+                              </button>
+                            </div>
+                          ) : null
+                        })()}
+                        {completingResumeId === (pair.portuguese || pair.english)?.id ? (
+                          <form onSubmit={e => handleUploadCounterpart(e, (pair.portuguese || pair.english)!)} className="flex flex-col gap-2">
+                            <input
+                              value={counterpartName}
+                              onChange={e => setCounterpartName(e.target.value)}
+                              placeholder={resumeIndex === 0 ? 'Nome do currículo' : 'Résumé name'}
+                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                              required
+                            />
+                            <input
+                              value={counterpartDescription}
+                              onChange={e => setCounterpartDescription(e.target.value)}
+                              placeholder={resumeIndex === 0 ? 'Descrição' : 'Description'}
+                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                            />
+                            <input
+                              type="file"
+                              accept=".pdf"
+                              onChange={e => setCounterpartFile(e.target.files?.[0] || null)}
+                              className="text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white"
+                              required
+                            />
+                            <div className="flex gap-3 mt-1">
+                              <button type="submit" className="text-teal-400">Adicionar versão</button>
+                              <button type="button" onClick={cancelCompleteResume} className="text-gray-400">Cancelar</button>
+                            </div>
+                          </form>
+                        ) : (
+                          <button
+                            onClick={() => startCompleteResume((pair.portuguese || pair.english)!)}
+                            className="text-teal-400 hover:text-teal-300"
+                          >
+                            Adicionar versão {resumeIndex === 0 ? 'em português' : 'em inglês'}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

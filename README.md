@@ -26,12 +26,14 @@ Aplicação web de portfólio para apresentação de projetos, habilidades e exp
 - Interface pública em português do Brasil e inglês, com preferência de idioma salva no navegador.
 - Painel administrativo protegido para gerenciar projetos, habilidades, experiências, configurações e currículos.
 - Conteúdo dinâmico de projetos, habilidades, experiências e configurações com campos em português e inglês.
-- Cadastro obrigatório de currículos em pares (`pt-BR` e `en`), com ordenação pelo painel e exibição das duas versões lado a lado.
+- Cadastro obrigatório de currículos em pares (`pt-BR` e `en`), vínculo ou complementação de registros antigos, ordenação pelo painel e exibição das duas versões lado a lado.
 - Autenticação de administrador com JWT e armazenamento de senhas com bcrypt.
 - Recuperação de senha e envio do formulário de contato por e-mail com Resend.
 - Consulta de repositórios, contribuições, linguagens e versão do portfólio pela API do GitHub.
+- Preservação das descrições originais dos repositórios do GitHub, sem envio do conteúdo para serviços automáticos de tradução.
 - Atualização dos clientes conectados após alterações administrativas por Socket.IO.
 - Limitação de requisições nas rotas de autenticação e contato.
+- Cache e limitação de requisições nas consultas públicas ao GitHub.
 - Monitoramento da conexão com o banco de dados com notificações de falha e recuperação.
 
 ## 🛠️ Tecnologias
@@ -58,6 +60,8 @@ Aplicação web de portfólio para apresentação de projetos, habilidades e exp
 - Render para o backend.
 - Aiven para o banco MySQL.
 
+O arquivo de configuração da Vercel está versionado no frontend. Render e Aiven correspondem à infraestrutura operacional documentada do projeto; suas configurações de painel e credenciais não fazem parte do repositório.
+
 ## 🧩 Arquitetura
 
 O repositório utiliza uma organização de monorepo simples. O diretório [`frontend`](./frontend) contém a SPA, enquanto [`backend`](./backend) concentra a API, regras de negócio e acesso ao banco.
@@ -77,7 +81,7 @@ Uma descrição mais detalhada dos componentes e fluxos está disponível em [DO
 
 ## ✅ Pré-requisitos
 
-- Node.js. O repositório não define uma versão mínima em `engines`.
+- Node.js `^20.19.0` ou `>=22.12.0`, conforme `engines` e o requisito do Vite instalado.
 - npm.
 - MySQL.
 - Git.
@@ -127,19 +131,32 @@ Uma descrição mais detalhada dos componentes e fluxos está disponível em [DO
 
 Com a configuração padrão presente no código, o frontend fica disponível em `http://localhost:5173` e a API em `http://localhost:3000`. Também é possível iniciar cada parte separadamente com `npm run dev:frontend` e `npm run dev:backend`.
 
+Antes de publicar, execute a verificação local completa:
+
+```bash
+npm run check
+```
+
+Esse comando executa os testes do backend, o ESLint do frontend e o build de produção.
+
 ## 🔐 Variáveis de ambiente
 
 ### Backend
 
 | Variável | Finalidade |
 | --- | --- |
+| `NODE_ENV` | Ambiente da API; use `production` no deploy e `development` localmente. |
 | `PORT` | Porta HTTP da API; o código usa `3000` quando não informada. |
+| `FRONTEND_URL` | Origens HTTP/HTTPS autorizadas pelo CORS e URL usada nos links de recuperação; aceita valores sem caminhos, separados por vírgula. |
 | `DB_HOST` | Host do servidor MySQL. |
 | `DB_PORT` | Porta do servidor MySQL. |
 | `DB_NAME` | Nome do banco de dados. |
 | `DB_USER` | Usuário do banco. |
 | `DB_PASSWORD` | Senha do banco. |
-| `JWT_SECRET` | Chave usada para assinar e validar tokens JWT. |
+| `DB_SSL_REJECT_UNAUTHORIZED` | Controla a validação do certificado TLS do MySQL remoto; o padrão seguro é `true`. |
+| `DB_SSL_CA_BASE64` | Certificado CA do MySQL remoto codificado em Base64, quando fornecido pelo provedor. |
+| `JWT_SECRET` | Chave com pelo menos 32 caracteres usada para assinar e validar tokens JWT. |
+| `ADMIN_SETUP_KEY` | Chave secreta exigida somente na criação do primeiro administrador. |
 | `GITHUB_USERNAME` | Usuário consultado nas APIs do GitHub. |
 | `GITHUB_TOKEN` | Token usado nas chamadas REST/GraphQL e no gerenciamento de currículos. |
 | `RESEND_API_KEY` | Chave da API Resend para e-mails. |
@@ -168,9 +185,29 @@ O banco definido por `DB_NAME` deve existir antes da migração. O comando `npm 
 
 A migração também adiciona, em bancos existentes, as colunas de tradução usadas por projetos, habilidades e experiências. Ela preserva os textos atuais; traduções ainda não cadastradas devem ser preenchidas pelo painel administrativo.
 
-Separadamente, durante a inicialização da API, `backend/src/app.js` testa a conexão, garante a existência das tabelas `settings`, `skills` e `experiences` e insere os dados iniciais de habilidades e experiências quando as respectivas tabelas estão vazias. No código atual, esse bloco só é executado quando `RESEND_API_KEY` e um e-mail de destino (`MY_EMAIL` ou `EMAIL_USER`) estão configurados.
+Separadamente, durante a inicialização da API, `backend/src/app.js` testa a conexão, garante a existência das tabelas `settings`, `skills` e `experiences` e insere os dados iniciais de habilidades e experiências quando as respectivas tabelas estão vazias. Esse processo é independente da configuração do serviço de e-mail.
 
 Não há mecanismo de reversão de schema.
+
+## 🛡️ Segurança e publicação
+
+- O CORS da API e do Socket.IO aceita o endereço publicado confirmado, os endereços locais de desenvolvimento e as origens informadas em `FRONTEND_URL`.
+- Rotas administrativas exigem JWT. A API possui limite geral, com limites adicionais para login, configuração inicial, recuperação de senha, contato e consultas ao GitHub.
+- A criação do primeiro administrador exige `ADMIN_SETUP_KEY`; depois do primeiro usuário, novos registros são bloqueados.
+- Senhas novas devem conter entre 12 e 128 caracteres. Tokens de recuperação expiram em 15 minutos e deixam de ser válidos após a primeira troca de senha.
+- Campos recebidos pela API têm validação de tipo, tamanho e formato. Currículos aceitam somente PDFs identificados como PDF e limitados a 5 MB por arquivo.
+- Conteúdo enviado por e-mail é escapado antes de ser inserido no HTML.
+- O frontend publicado envia cabeçalhos de segurança, incluindo CSP, HSTS, proteção contra frames e restrições de permissões do navegador. A CSP permite conexões somente com a própria origem e com o backend publicado no Render; se a URL da API mudar, atualize `frontend/vercel.json` junto com `VITE_API_URL`.
+- Segredos devem existir somente nas variáveis do ambiente de deploy. Nunca use variáveis `VITE_*` para tokens ou senhas, pois elas são incorporadas ao bundle público.
+- `GITHUB_TOKEN` deve ser um token de acesso refinado, restrito a este repositório e somente às permissões necessárias de leitura e escrita de conteúdo.
+
+Relatos de vulnerabilidade devem seguir a [política de segurança](./SECURITY.md), sem publicar credenciais ou detalhes exploráveis em issues públicas.
+
+O upload administrativo grava os PDFs diretamente na branch `main`. Se a branch exigir pull request, autorize especificamente a conta técnica usada pela API na lista de bypass; não remova a proteção para todos os colaboradores.
+
+Para o primeiro administrador, faça uma requisição `POST /api/auth/register` com `email`, `password` e `setupKey`. O valor de `setupKey` deve corresponder a `ADMIN_SETUP_KEY` e não deve ser armazenado no frontend.
+
+Antes de publicar, confirme `NODE_ENV=production`, `FRONTEND_URL`, as credenciais do banco, `JWT_SECRET`, `ADMIN_SETUP_KEY`, GitHub e Resend no painel do provedor.
 
 ## 📚 Principais aprendizados
 
@@ -193,9 +230,12 @@ As soluções utilizadas foram testadas, adaptadas e documentadas durante o dese
 
 - Adicionar um mecanismo para reverter migrações.
 - Separar as migrações do processo de inicialização do servidor e versionar alterações de schema.
-- Criar testes automatizados para API e interface.
+- Ampliar os testes atuais com cobertura de integração da API, autenticação, banco de dados e interface.
+- Automatizar a auditoria de dependências no fluxo de integração contínua.
+- Migrar a sessão administrativa para cookie `HttpOnly` com proteção CSRF, reduzindo a exposição do token a scripts executados no navegador.
+- Tornar o upload e a remoção dos dois PDFs uma única alteração atômica no GitHub. Atualmente, os arquivos são enviados em commits separados e a remoção no painel retira os metadados da listagem, mas não apaga o PDF nem seu histórico Git.
 - Documentar os endpoints da API em um formato como OpenAPI.
-- Adicionar validação centralizada das variáveis de ambiente na inicialização.
+- Ampliar a validação de inicialização para todas as integrações opcionais e obrigatórias.
 
 ## 📄 Licença e uso
 

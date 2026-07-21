@@ -1,4 +1,5 @@
 const { Resend } = require('resend')
+const { escapeHtml } = require('../utils/security')
 
 // Variável de memória para evitar SPAM de e-mails
 let isDatabaseOffline = false
@@ -19,13 +20,12 @@ async function notifyFailure(dbError) {
     await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: targetEmail,
-      subject: `🚨 BANCO AIVEN OFFLINE! Ligue o Banco de Dados`,
+      subject: 'Falha de conexão com o banco de dados',
       html: `
-        <h2 style="color: #d9534f;">ALERTA CRÍTICO: BANCO DE DADOS DESLIGADO</h2>
-        <p>Um visitante tentou acessar o portfólio, mas o <strong>banco de dados na Aiven está desligado</strong>.</p>
-        <p>Isso geralmente acontece se a Aiven pausou o banco por inatividade ou manutenção.</p>
-        <p><strong>Ação Imediata:</strong> Acesse o painel da Aiven e ligue o serviço MySQL (Power On).</p>
-        <p style="color: gray; font-size: 12px;"><strong>Erro técnico:</strong> ${dbError.message || dbError}</p>
+        <h2 style="color: #d9534f;">Falha de conexão com o banco de dados</h2>
+        <p>Uma consulta do portfólio não conseguiu acessar o serviço MySQL.</p>
+        <p>Verifique o estado da instância, as credenciais, a rede e o certificado TLS no provedor.</p>
+        <p style="color: gray; font-size: 12px;"><strong>Erro técnico:</strong> ${escapeHtml(dbError.message || dbError)}</p>
         <hr />
         <p><small>Este alerta foi acionado pelo acesso de um visitante.</small></p>
       `
@@ -52,11 +52,10 @@ async function notifyRecovery() {
     await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: targetEmail,
-      subject: `✅ Banco Aiven Online!`,
+      subject: 'Conexão com o banco de dados restabelecida',
       html: `
-        <h2 style="color: #5cb85c;">BOAS NOTÍCIAS: BANCO DE DADOS FUNCIONANDO</h2>
-        <p>Um visitante acessou o portfólio e a consulta ao banco de dados foi concluída com sucesso.</p>
-        <p>O sistema foi totalmente restabelecido e está operando normalmente.</p>
+        <h2 style="color: #5cb85c;">Conexão restabelecida</h2>
+        <p>Uma consulta ao banco de dados foi concluída com sucesso após a falha anterior.</p>
       `
     })
     console.log('DB Monitor: Aviso de recuperação enviado com sucesso.')
