@@ -48,7 +48,7 @@ O backend foi construído sob o padrão arquitetural **MVC** (Model-View-Control
 
 ### 3.1. Estrutura de Diretórios
 * `src/app.js`: Ponto de entrada. Configura o Express (incluindo `trust proxy` para rate limiting atrás de proxy reverso), restringe o CORS, adiciona cabeçalhos de segurança, integra o `http.createServer` com o `Socket.IO` e registra as rotas da API. Um middleware injeta o servidor WebSocket (`req.io`) nas requisições.
-* `src/database/connection.js`: Estabelece o pool de conexões com o MySQL por `mysql2/promise`. Conexões remotas validam o certificado TLS por padrão.
+* `src/database/connection.js`: Estabelece o pool de conexões com o MySQL por `mysql2/promise`. Conexões remotas utilizam TLS; quando `DB_SSL_CA_BASE64` é configurada, o certificado é validado por padrão. Sem a CA privada do provedor, a conexão mantém a criptografia em modo de compatibilidade, sem validação da cadeia.
 * `src/models/`: Responsáveis pelas queries SQL e pelo acesso às tabelas.
   * `projectModel.js`, `userModel.js`, `settingsModel.js`, `skillsModel.js`, `experienceModel.js`.
 * `src/database/migrate.js`: Cria as tabelas utilizadas pela aplicação quando elas ainda não existem.

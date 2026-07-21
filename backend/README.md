@@ -79,7 +79,7 @@ As operações administrativas de alteração são protegidas por autenticação
 - Tokens de recuperação são vinculados à senha atual e não podem ser reutilizados após uma redefinição bem-sucedida.
 - PDFs são validados pelo tipo, assinatura inicial e limite de 5 MB antes do envio ao GitHub.
 - O token do GitHub deve ser refinado e limitado ao repositório do portfólio, com acesso de conteúdo compatível com as consultas e o upload de PDFs.
-- A conexão MySQL remota valida o certificado TLS por padrão. Quando o provedor fornecer uma CA, codifique o arquivo em Base64 e configure `DB_SSL_CA_BASE64`. Defina `DB_SSL_REJECT_UNAUTHORIZED=false` apenas temporariamente e com o risco conhecido.
+- A conexão MySQL remota utiliza TLS. Quando o provedor fornecer uma CA privada, codifique o arquivo em Base64 e configure `DB_SSL_CA_BASE64`; nessa condição, o certificado é validado por padrão. Sem a CA, o código mantém a conexão criptografada em modo de compatibilidade, sem validar a cadeia. Use `DB_SSL_REJECT_UNAUTHORIZED=false` somente para diagnóstico quando uma CA estiver configurada.
 - As chamadas ao GitHub possuem tempo limite para que indisponibilidades externas não mantenham requisições abertas indefinidamente.
 
 No fluxo atual, remover um currículo pelo painel remove seu metadado de `resumes_links`, mas não apaga o PDF já versionado nem seu histórico no GitHub. A exclusão completa deve ser tratada em uma alteração futura e coordenada no repositório.

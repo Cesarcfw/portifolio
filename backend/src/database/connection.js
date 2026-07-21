@@ -1,10 +1,6 @@
 const mysql = require('mysql2/promise')
 require('dotenv').config()
-
-const isLocalDatabase = ['localhost', '127.0.0.1'].includes(process.env.DB_HOST)
-const databaseCa = process.env.DB_SSL_CA_BASE64
-  ? Buffer.from(process.env.DB_SSL_CA_BASE64, 'base64').toString('utf8')
-  : undefined
+const { createDatabaseSslConfig } = require('./sslConfig')
 
 const pool = mysql.createPool({
   host:     process.env.DB_HOST,
@@ -14,10 +10,11 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   waitForConnections: true,
   connectionLimit: 10,
-  ssl: isLocalDatabase ? undefined : {
-    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
-    ...(databaseCa ? { ca: databaseCa } : {})
-  }
+  ssl: createDatabaseSslConfig({
+    host: process.env.DB_HOST,
+    caBase64: process.env.DB_SSL_CA_BASE64,
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED
+  })
 })
 
 module.exports = pool
