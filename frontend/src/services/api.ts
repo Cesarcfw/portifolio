@@ -112,6 +112,18 @@ export async function uploadResumeCounterpart(token: string, resumeId: number, c
   return res.json()
 }
 
+export async function replaceResumeFile(token: string, resumeId: number, base64Data: string) {
+  const res = await fetch(`${BASE_URL}/settings/resume/${resumeId}/file`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ base64Data })
+  })
+  return res.json()
+}
+
 export async function linkResumeCounterparts(token: string, portugueseId: number, englishId: number) {
   const res = await fetch(`${BASE_URL}/settings/resume/link`, {
     method: 'POST',

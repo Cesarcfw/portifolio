@@ -9,6 +9,7 @@ API REST em Node.js e Express responsável por autenticação, regras de negóci
 - Gerenciamento de configurações e pares de currículos.
 - Cadastro conjunto das versões em português do Brasil (`pt-BR`) e inglês (`en`), vinculadas por `pairId` e ordenadas por `order` no JSON armazenado em `settings`.
 - Vínculo entre PDFs legados já cadastrados ou complementação pela inclusão da versão ausente, sem substituir o arquivo original.
+- Substituição individual do PDF de um currículo existente, preservando nome, descrição, idioma, ordem, par e URL.
 - Persistência das versões em inglês de projetos, habilidades e experiências em colunas com sufixo `_en`.
 - Consulta às APIs REST e GraphQL do GitHub.
 - Envio de contatos, recuperação de senha e alertas com Resend.
@@ -64,7 +65,7 @@ Quando `PORT` não é definida, a API usa `http://localhost:3000`.
 - `/api/projects`: consulta e gerenciamento de projetos.
 - `/api/github`: repositórios, contribuições, linguagens e versão.
 - `/api/contact`: envio do formulário de contato.
-- `/api/settings`: configurações, cadastro conjunto, ordenação, edição e remoção de pares de currículos.
+- `/api/settings`: configurações, cadastro conjunto, ordenação, edição, substituição de PDF e remoção de pares de currículos.
 - `/api/skills`: consulta e gerenciamento de habilidades.
 - `/api/experiences`: consulta e gerenciamento de experiências.
 

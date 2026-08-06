@@ -117,6 +117,7 @@ O frontend é organizado em componentes, páginas, contexto e serviços, com Hoo
 * O cadastro de currículo exige simultaneamente um PDF em português do Brasil e outro em inglês. A API grava dois itens em `resumes_links`, vinculados pelo mesmo `pairId` e com a mesma posição em `order`.
 * Cada item mantém `language` com os valores `pt-BR` ou `en`. Registros antigos sem `language`, `pairId` ou `order` continuam legíveis e são tratados como registros legados em português.
 * No painel, um registro legado incompleto pode ser vinculado a outro PDF já cadastrado no idioma oposto. Se esse arquivo não existir, também é possível enviar somente o PDF ausente. Em ambos os casos, a API atribui `pairId` e `order` às duas versões sem substituir o arquivo original.
+* O PDF de qualquer currículo já cadastrado pode ser substituído individualmente. A API consulta o `sha` atual pela API do GitHub e atualiza o arquivo no mesmo caminho, preservando os metadados e o pareamento existentes.
 * A ordem é alterada no painel por par, e a página Sobre apresenta cada versão em português ao lado da respectiva versão em inglês.
 
 ### 4.3. Integração Externa e Controle de Versão (GitHub)

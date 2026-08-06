@@ -121,3 +121,5 @@ frontend/dist-ssr/
 *.njsproj
 *.sln
 *.sw?
+
+HANDOFF.md

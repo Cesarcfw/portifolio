@@ -4,6 +4,12 @@ function createResumeError(message, status) {
   return error
 }
 
+function getResumeFilename(url) {
+  if (typeof url !== 'string') return null
+  const match = url.match(/^\/curriculos\/([A-Za-z0-9][A-Za-z0-9._-]*\.pdf)$/i)
+  return match ? match[1] : null
+}
+
 function linkExistingResumeRecords(resumes, portugueseId, englishId) {
   const portuguese = resumes.find(resume => resume.id === portugueseId)
   const english = resumes.find(resume => resume.id === englishId)
@@ -43,4 +49,4 @@ function linkExistingResumeRecords(resumes, portugueseId, englishId) {
   return { updated, pairId }
 }
 
-module.exports = { linkExistingResumeRecords }
+module.exports = { getResumeFilename, linkExistingResumeRecords }

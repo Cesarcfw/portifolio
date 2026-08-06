@@ -8,6 +8,7 @@ import {
   updateSettings, 
   uploadResumePair,
   uploadResumeCounterpart,
+  replaceResumeFile,
   linkResumeCounterparts,
   reorderResumePairs,
   removeResumePair,
@@ -151,6 +152,8 @@ export default function Admin() {
   const [resumeMessage, setResumeMessage] = useState('')
   const [editingResumeId, setEditingResumeId] = useState<number | null>(null)
   const [completingResumeId, setCompletingResumeId] = useState<number | null>(null)
+  const [replacingResumeId, setReplacingResumeId] = useState<number | null>(null)
+  const [replacementFile, setReplacementFile] = useState<File | null>(null)
   const [counterpartName, setCounterpartName] = useState('')
   const [counterpartDescription, setCounterpartDescription] = useState('')
   const [counterpartFile, setCounterpartFile] = useState<File | null>(null)
@@ -373,6 +376,45 @@ export default function Admin() {
     setResumeName('')
     setResumeDescription('')
     setResumeLanguage('pt-BR')
+  }
+
+  function startReplaceResume(resumeId: number) {
+    setReplacingResumeId(resumeId)
+    setReplacementFile(null)
+  }
+
+  function cancelReplaceResume() {
+    setReplacingResumeId(null)
+    setReplacementFile(null)
+  }
+
+  async function handleReplaceResumeFile(e: React.FormEvent, resume: Resume) {
+    e.preventDefault()
+    if (!replacementFile) {
+      setResumeMessage('Selecione o novo arquivo PDF.')
+      return
+    }
+
+    setResumeMessage(`Substituindo o PDF de ${resume.name}...`)
+    try {
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(replacementFile)
+      })
+      const result = await replaceResumeFile(token!, resume.id, base64Data)
+      if (result.error) {
+        setResumeMessage(result.error)
+        return
+      }
+
+      setResumeMessage('PDF substituído com sucesso! Aguarde a atualização do deploy.')
+      cancelReplaceResume()
+      loadData()
+    } catch {
+      setResumeMessage('Erro ao ler ou substituir o arquivo.')
+    }
   }
 
   async function handleDeleteResumePair(pairId: number | string) {
@@ -875,10 +917,29 @@ export default function Admin() {
                             <div className="text-xs text-teal-400 mb-1">{resumeIndex === 0 ? 'Português (Brasil)' : 'English'}</div>
                             <div className="font-medium">{resume.name}</div>
                             {resume.description && <div className="text-sm text-gray-400 mt-1">{resume.description}</div>}
-                            <div className="flex items-center justify-between mt-3">
+                            <div className="flex items-center justify-between mt-3 gap-3">
                               <a href={resume.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">Abrir PDF</a>
-                              <button onClick={() => startEditResume(resume)} className="text-sm text-blue-400">Editar</button>
+                              <div className="flex items-center gap-3">
+                                <button onClick={() => startReplaceResume(resume.id)} className="text-sm text-teal-400">Substituir PDF</button>
+                                <button onClick={() => startEditResume(resume)} className="text-sm text-blue-400">Editar</button>
+                              </div>
                             </div>
+                            {replacingResumeId === resume.id && (
+                              <form onSubmit={e => handleReplaceResumeFile(e, resume)} className="mt-3 border-t border-gray-700 pt-3 flex flex-col gap-2">
+                                <label className="text-xs text-gray-400">Novo arquivo PDF</label>
+                                <input
+                                  type="file"
+                                  accept="application/pdf,.pdf"
+                                  onChange={e => setReplacementFile(e.target.files?.[0] || null)}
+                                  className="text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white"
+                                  required
+                                />
+                                <div className="flex gap-3 text-sm">
+                                  <button type="submit" className="text-teal-400">Confirmar substituição</button>
+                                  <button type="button" onClick={cancelReplaceResume} className="text-gray-400">Cancelar</button>
+                                </div>
+                              </form>
+                            )}
                           </>
                         )}
                       </div>
