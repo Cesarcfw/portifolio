@@ -1,6 +1,6 @@
 const settingsModel = require('../models/settingsModel')
 const { getPdfBase64, isHttpUrl, isValidEmail, normalizeEmail } = require('../utils/security')
-const { linkExistingResumeRecords } = require('../utils/resumePairs')
+const { getResumeFilename, linkExistingResumeRecords } = require('../utils/resumePairs')
 
 const EDITABLE_SETTING_KEYS = new Set([
   'about_me_text', 'about_me_text_en',
@@ -66,26 +66,59 @@ async function saveResumes(resumes) {
   await settingsModel.updateSetting('resumes_links', JSON.stringify(resumes))
 }
 
-async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64Data, name }) {
+function getGithubFileUrl(githubUsername, filename) {
+  return `https://api.github.com/repos/${encodeURIComponent(githubUsername)}/portifolio/contents/frontend/public/curriculos/${encodeURIComponent(filename)}`
+}
+
+function getGithubHeaders(githubToken) {
+  return {
+    Authorization: `Bearer ${githubToken}`,
+    Accept: 'application/vnd.github.v3+json'
+  }
+}
+
+async function getGithubFileSha({ githubUsername, githubToken, filename }) {
+  const response = await fetch(`${getGithubFileUrl(githubUsername, filename)}?ref=main`, {
+    headers: getGithubHeaders(githubToken),
+    signal: AbortSignal.timeout(15 * 1000)
+  })
+
+  if (!response.ok) {
+    const error = new Error(response.status === 404
+      ? 'Arquivo atual do currículo não encontrado no GitHub'
+      : `GitHub retornou HTTP ${response.status} ao consultar o arquivo`)
+    error.status = response.status
+    throw error
+  }
+
+  const file = await response.json()
+  if (file.type !== 'file' || typeof file.sha !== 'string' || !file.sha) {
+    const error = new Error('Resposta inválida do GitHub ao consultar o arquivo')
+    error.status = 502
+    throw error
+  }
+  return file.sha
+}
+
+async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64Data, name, sha }) {
   const base64Content = getPdfBase64(base64Data)
   if (!base64Content) {
     const error = new Error('O arquivo deve ser um PDF válido com no máximo 5 MB')
     error.status = 400
     throw error
   }
-  const githubUrl = `https://api.github.com/repos/${encodeURIComponent(githubUsername)}/portifolio/contents/frontend/public/curriculos/${encodeURIComponent(filename)}`
-  const response = await fetch(githubUrl, {
+  const response = await fetch(getGithubFileUrl(githubUsername, filename), {
     method: 'PUT',
     headers: {
-      Authorization: `Bearer ${githubToken}`,
+      ...getGithubHeaders(githubToken),
       'Content-Type': 'application/json',
-      Accept: 'application/vnd.github.v3+json'
     },
     signal: AbortSignal.timeout(15 * 1000),
     body: JSON.stringify({
-      message: `feat: upload currículo ${name} via painel admin`,
+      message: `${sha ? 'fix: substituir' : 'feat: upload'} currículo ${name} via painel admin`,
       content: base64Content,
-      branch: 'main'
+      branch: 'main',
+      ...(sha ? { sha } : {})
     })
   })
 
@@ -99,6 +132,51 @@ async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64
     const error = new Error(errorData.message || `GitHub retornou HTTP ${response.status}`)
     error.status = response.status
     throw error
+  }
+}
+
+async function replaceResumeFile(req, res) {
+  const id = Number(req.params.id)
+  const { base64Data } = req.body
+
+  if (!Number.isSafeInteger(id) || id <= 0 || typeof base64Data !== 'string') {
+    return res.status(400).json({ error: 'ID e arquivo PDF válidos são obrigatórios' })
+  }
+
+  try {
+    const resumes = await getResumes()
+    const resume = resumes.find(item => item.id === id)
+    if (!resume) {
+      return res.status(404).json({ error: 'Currículo não encontrado' })
+    }
+
+    const filename = getResumeFilename(resume.url)
+    if (!filename) {
+      return res.status(400).json({ error: 'O currículo não possui um caminho de PDF válido' })
+    }
+
+    const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
+    const githubToken = (process.env.GITHUB_TOKEN || '').trim()
+    if (!githubUsername || !githubToken) {
+      return res.status(500).json({ error: 'Integração com GitHub não configurada' })
+    }
+
+    const sha = await getGithubFileSha({ githubUsername, githubToken, filename })
+    await uploadPdfToGithub({
+      githubUsername,
+      githubToken,
+      filename,
+      base64Data,
+      name: resume.name,
+      sha
+    })
+
+    req.io.emit('refresh_data')
+    res.json({ message: 'Arquivo do currículo substituído com sucesso', resume })
+  } catch (err) {
+    console.error('Erro no replaceResumeFile:', err)
+    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500
+    res.status(status).json({ error: `Erro no GitHub: ${err.message}` })
   }
 }
 
@@ -375,4 +453,4 @@ async function editResume(req, res) {
   }
 }
 
-module.exports = { getSettings, updateSettings, uploadResume, uploadResumeCounterpart, linkResumeCounterparts, reorderResumePairs, removeResumePair, removeResume, editResume }
+module.exports = { getSettings, updateSettings, uploadResume, uploadResumeCounterpart, replaceResumeFile, linkResumeCounterparts, reorderResumePairs, removeResumePair, removeResume, editResume }

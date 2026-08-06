@@ -1,6 +1,14 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { linkExistingResumeRecords } = require('../src/utils/resumePairs')
+const { getResumeFilename, linkExistingResumeRecords } = require('../src/utils/resumePairs')
+
+test('extrai somente PDFs do diretório público de currículos', () => {
+  assert.equal(getResumeFilename('/curriculos/curriculo-pt-br-123.pdf'), 'curriculo-pt-br-123.pdf')
+  assert.equal(getResumeFilename('/curriculos/resume_en.v2.pdf'), 'resume_en.v2.pdf')
+  assert.equal(getResumeFilename('/outro/arquivo.pdf'), null)
+  assert.equal(getResumeFilename('/curriculos/../segredo.pdf'), null)
+  assert.equal(getResumeFilename('/curriculos/arquivo.txt'), null)
+})
 
 test('vincula registros legados em português e inglês sem alterar seus arquivos', () => {
   const resumes = [
