@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getFeaturedProjects, getGithubRepos, getGithubContributions, getSettings } from '../services/api'
+import { ApiError, getFeaturedProjects, getGithubRepos, getGithubContributions, getSettings } from '../services/api'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface Project {
@@ -62,7 +62,7 @@ export default function Home() {
   const [contributions, setContributions] = useState<ContributionData | null>(null)
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [hoveredDay, setHoveredDay] = useState<ContributionDay | null>(null)
   const availabilityReference = settings.availability_text || ''
 
@@ -76,18 +76,13 @@ export default function Home() {
           getSettings().catch(() => ({}))
         ])
 
-        // Verifica se a API retornou erro (ex: banco fora do ar)
-        if (proj.error || rep.error) {
-          throw new Error('API Error')
-        }
-
         setProjects(proj || [])
         setRepos(rep || [])
         setContributions(contrib)
         setSettings(sets || {})
       } catch (err) {
         console.error("Erro ao carregar dados:", err)
-        setError(true)
+        setError(err instanceof ApiError ? err.code : 'NETWORK_ERROR')
       } finally {
         setLoading(false)
       }
@@ -105,6 +100,8 @@ export default function Home() {
   }, [error])
 
   if (error) {
+    const isGithubError = error.startsWith('GITHUB_')
+    const isNetworkError = error === 'NETWORK_ERROR'
     return (
       <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
         <div className="relative mb-8 flex justify-center">
@@ -116,21 +113,24 @@ export default function Home() {
           */}
           <img 
             src="https://media.tenor.com/lcDEp7V0E6wAAAAC/cryptoadz-coffee-time.gif" 
-            alt={isEnglish ? 'Server starting' : 'Servidor iniciando'}
+            alt={isEnglish ? 'Service unavailable' : 'Serviço indisponível'}
             className="w-32 h-32 rounded-xl object-cover shadow-lg pixelated"
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
         
         <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-          {isEnglish ? 'The server is starting...' : 'Estamos iniciando o servidor...'}
+          {isGithubError
+            ? (isEnglish ? 'GitHub data is temporarily unavailable' : 'Dados do GitHub temporariamente indisponíveis')
+            : isNetworkError
+              ? (isEnglish ? 'Unable to reach the server' : 'Não foi possível acessar o servidor')
+              : (isEnglish ? 'Data is temporarily unavailable' : 'Dados temporariamente indisponíveis')}
         </h1>
         
         <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
-          {isEnglish
-            ? <>The first request may take about <strong>50 seconds</strong> while the server starts.</>
-            : <>O primeiro acesso pode levar cerca de <strong>50 segundos</strong> enquanto o servidor inicia.</>}
+          {isEnglish ? 'Please try again in a moment.' : 'Tente novamente em alguns instantes.'}
         </p>
+        {error !== 'NETWORK_ERROR' && <p className="text-xs text-gray-500 mb-6">{error}</p>}
         
         <button 
           onClick={() => window.location.reload()} 

@@ -1,6 +1,20 @@
 const settingsModel = require('../models/settingsModel')
 const { getPdfBase64, isHttpUrl, isValidEmail, normalizeEmail } = require('../utils/security')
 const { getResumeFilename, linkExistingResumeRecords } = require('../utils/resumePairs')
+const { respondError, respondDatabaseError, classifyGithubError } = require('../utils/apiErrors')
+
+function respondResumeUploadError(req, res, err) {
+  if (err.status === 400) return respondError(req, res, 'RESUME_INVALID_PDF')
+  if (err.upstreamStatus === 404 && err.operation === 'lookup') return respondError(req, res, 'RESUME_FILE_NOT_FOUND')
+  if (err.source === 'database') return respondDatabaseError(req, res, err)
+  if (err.branchProtected) return respondError(req, res, 'GITHUB_BRANCH_PROTECTED', { cause: err, upstreamStatus: err.upstreamStatus, log: true })
+  if (err.upstreamStatus === 409) return respondError(req, res, 'GITHUB_FILE_CONFLICT', { cause: err, upstreamStatus: 409, log: true })
+  const code = classifyGithubError(err)
+  return respondError(req, res, code === 'GITHUB_UPSTREAM_ERROR' ? 'RESUME_UPLOAD_FAILED' : code, {
+    cause: err,
+    upstreamStatus: err.upstreamStatus
+  })
+}
 
 const EDITABLE_SETTING_KEYS = new Set([
   'about_me_text', 'about_me_text_en',
@@ -20,27 +34,27 @@ async function getSettings(req, res) {
     )
     res.json(publicSettings)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar configurações' })
+    respondDatabaseError(req, res, err)
   }
 }
 
 async function updateSettings(req, res) {
   const settings = req.body
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    return res.status(400).json({ error: 'Configurações inválidas' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Configurações inválidas' })
   }
 
   try {
     const entries = Object.entries(settings)
     for (const [key, value] of entries) {
       if (!EDITABLE_SETTING_KEYS.has(key) || typeof value !== 'string' || value.length > 5000) {
-        return res.status(400).json({ error: `Configuração inválida: ${key}` })
+        return respondError(req, res, 'INVALID_INPUT', { message: `Configuração inválida: ${key}` })
       }
       if (URL_SETTING_KEYS.has(key) && !isHttpUrl(value)) {
-        return res.status(400).json({ error: `URL inválida: ${key}` })
+        return respondError(req, res, 'INVALID_INPUT', { message: `URL inválida: ${key}` })
       }
       if (key === 'contact_email' && value && !isValidEmail(normalizeEmail(value))) {
-        return res.status(400).json({ error: 'E-mail de contato inválido' })
+        return respondError(req, res, 'INVALID_INPUT', { message: 'E-mail de contato inválido' })
       }
     }
     for (const [key, value] of entries) {
@@ -49,12 +63,18 @@ async function updateSettings(req, res) {
     req.io.emit('refresh_data')
     res.json({ message: 'Configurações atualizadas com sucesso' })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar configurações' })
+    respondDatabaseError(req, res, err)
   }
 }
 
 async function getResumes() {
-  const settings = await settingsModel.getAllSettings()
+  let settings
+  try {
+    settings = await settingsModel.getAllSettings()
+  } catch (err) {
+    err.source = 'database'
+    throw err
+  }
   try {
     return JSON.parse(settings.resumes_links || '[]')
   } catch {
@@ -63,7 +83,12 @@ async function getResumes() {
 }
 
 async function saveResumes(resumes) {
-  await settingsModel.updateSetting('resumes_links', JSON.stringify(resumes))
+  try {
+    await settingsModel.updateSetting('resumes_links', JSON.stringify(resumes))
+  } catch (err) {
+    err.source = 'database'
+    throw err
+  }
 }
 
 function getGithubFileUrl(githubUsername, filename) {
@@ -87,14 +112,16 @@ async function getGithubFileSha({ githubUsername, githubToken, filename }) {
     const error = new Error(response.status === 404
       ? 'Arquivo atual do currículo não encontrado no GitHub'
       : `GitHub retornou HTTP ${response.status} ao consultar o arquivo`)
-    error.status = response.status
+    error.upstreamStatus = response.status
+    error.rateLimited = response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0'
+    error.operation = 'lookup'
     throw error
   }
 
   const file = await response.json()
   if (file.type !== 'file' || typeof file.sha !== 'string' || !file.sha) {
     const error = new Error('Resposta inválida do GitHub ao consultar o arquivo')
-    error.status = 502
+    error.upstreamStatus = 502
     throw error
   }
   return file.sha
@@ -130,7 +157,10 @@ async function uploadPdfToGithub({ githubUsername, githubToken, filename, base64
       errorData = {}
     }
     const error = new Error(errorData.message || `GitHub retornou HTTP ${response.status}`)
-    error.status = response.status
+    error.upstreamStatus = response.status
+    error.rateLimited = response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0'
+    error.operation = 'upload'
+    error.branchProtected = /repository rule violations|changes must be made through a pull request/i.test(errorData.message || '')
     throw error
   }
 }
@@ -140,25 +170,25 @@ async function replaceResumeFile(req, res) {
   const { base64Data } = req.body
 
   if (!Number.isSafeInteger(id) || id <= 0 || typeof base64Data !== 'string') {
-    return res.status(400).json({ error: 'ID e arquivo PDF válidos são obrigatórios' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'ID e arquivo PDF válidos são obrigatórios' })
   }
 
   try {
     const resumes = await getResumes()
     const resume = resumes.find(item => item.id === id)
     if (!resume) {
-      return res.status(404).json({ error: 'Currículo não encontrado' })
+      return respondError(req, res, 'RESUME_NOT_FOUND')
     }
 
     const filename = getResumeFilename(resume.url)
     if (!filename) {
-      return res.status(400).json({ error: 'O currículo não possui um caminho de PDF válido' })
+      return respondError(req, res, 'RESUME_INVALID_PDF', { message: 'O currículo não possui um caminho de PDF válido' })
     }
 
     const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
     const githubToken = (process.env.GITHUB_TOKEN || '').trim()
     if (!githubUsername || !githubToken) {
-      return res.status(500).json({ error: 'Integração com GitHub não configurada' })
+      return respondError(req, res, 'GITHUB_NOT_CONFIGURED')
     }
 
     const sha = await getGithubFileSha({ githubUsername, githubToken, filename })
@@ -174,9 +204,7 @@ async function replaceResumeFile(req, res) {
     req.io.emit('refresh_data')
     res.json({ message: 'Arquivo do currículo substituído com sucesso', resume })
   } catch (err) {
-    console.error('Erro no replaceResumeFile:', err)
-    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500
-    res.status(status).json({ error: `Erro no GitHub: ${err.message}` })
+    respondResumeUploadError(req, res, err)
   }
 }
 
@@ -189,14 +217,14 @@ async function uploadResume(req, res) {
       portuguese.name.length > 150 || english.name.length > 150 ||
       (typeof portuguese.description === 'string' ? portuguese.description.length : 0) > 1000 ||
       (typeof english.description === 'string' ? english.description.length : 0) > 1000) {
-    return res.status(400).json({ error: 'Os currículos em português e inglês são obrigatórios' })
+    return respondError(req, res, 'RESUME_PAIR_INVALID', { message: 'Os currículos em português e inglês são obrigatórios' })
   }
 
   try {
     const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
     const githubToken = (process.env.GITHUB_TOKEN || '').trim()
     if (!githubUsername || !githubToken) {
-      return res.status(500).json({ error: 'Integração com GitHub não configurada' })
+      return respondError(req, res, 'GITHUB_NOT_CONFIGURED')
     }
 
     const pairId = Date.now()
@@ -245,9 +273,7 @@ async function uploadResume(req, res) {
     req.io.emit('refresh_data')
     res.json({ message: 'Par de currículos adicionado com sucesso', resumes: newResumes })
   } catch (err) {
-    console.error('Erro no uploadResume:', err)
-    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500
-    res.status(status).json({ error: `Erro no GitHub: ${err.message}` })
+    respondResumeUploadError(req, res, err)
   }
 }
 
@@ -258,14 +284,14 @@ async function uploadResumeCounterpart(req, res) {
   if (!Number.isFinite(id) || typeof name !== 'string' || !name.trim() || name.length > 150 ||
       typeof base64Data !== 'string' ||
       (typeof description === 'string' ? description.length : 0) > 1000) {
-    return res.status(400).json({ error: 'Nome e arquivo da versão ausente são obrigatórios' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Nome e arquivo da versão ausente são obrigatórios' })
   }
 
   try {
     const resumes = await getResumes()
     const selectedIndex = resumes.findIndex(resume => resume.id === id)
     if (selectedIndex === -1) {
-      return res.status(404).json({ error: 'Currículo original não encontrado' })
+      return respondError(req, res, 'RESUME_NOT_FOUND', { message: 'Currículo original não encontrado' })
     }
 
     const selected = resumes[selectedIndex]
@@ -278,13 +304,13 @@ async function uploadResumeCounterpart(req, res) {
     )
 
     if (counterpartExists) {
-      return res.status(409).json({ error: 'Este currículo já possui as duas versões' })
+      return respondError(req, res, 'RESUME_PAIR_CONFLICT', { message: 'Este currículo já possui as duas versões' })
     }
 
     const githubUsername = (process.env.GITHUB_USERNAME || '').trim()
     const githubToken = (process.env.GITHUB_TOKEN || '').trim()
     if (!githubUsername || !githubToken) {
-      return res.status(500).json({ error: 'Integração com GitHub não configurada' })
+      return respondError(req, res, 'GITHUB_NOT_CONFIGURED')
     }
 
     let newId = Date.now()
@@ -321,9 +347,7 @@ async function uploadResumeCounterpart(req, res) {
     req.io.emit('refresh_data')
     res.json({ message: 'Versão ausente adicionada com sucesso', resume: counterpart })
   } catch (err) {
-    console.error('Erro no uploadResumeCounterpart:', err)
-    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500
-    res.status(status).json({ error: `Erro no GitHub: ${err.message}` })
+    respondResumeUploadError(req, res, err)
   }
 }
 
@@ -333,7 +357,7 @@ async function linkResumeCounterparts(req, res) {
 
   if (!Number.isInteger(portugueseId) || !Number.isInteger(englishId) ||
       portugueseId <= 0 || englishId <= 0 || portugueseId === englishId) {
-    return res.status(400).json({ error: 'Selecione dois currículos válidos e diferentes' })
+    return respondError(req, res, 'RESUME_PAIR_INVALID', { message: 'Selecione dois currículos válidos e diferentes' })
   }
 
   try {
@@ -344,15 +368,17 @@ async function linkResumeCounterparts(req, res) {
     req.io.emit('refresh_data')
     res.json({ message: 'Currículos existentes vinculados com sucesso', pairId })
   } catch (err) {
-    const status = Number.isInteger(err.status) ? err.status : 500
-    res.status(status).json({ error: status === 500 ? 'Erro ao vincular os currículos existentes' : err.message })
+    if (err.status === 400) return respondError(req, res, 'RESUME_PAIR_INVALID', { message: err.message })
+    if (err.status === 404) return respondError(req, res, 'RESUME_NOT_FOUND', { message: err.message })
+    if (err.status === 409) return respondError(req, res, 'RESUME_PAIR_CONFLICT', { message: err.message })
+    respondDatabaseError(req, res, err)
   }
 }
 
 async function reorderResumePairs(req, res) {
   const { pairIds } = req.body
   if (!Array.isArray(pairIds)) {
-    return res.status(400).json({ error: 'Ordem inválida' })
+    return respondError(req, res, 'RESUME_PAIR_INVALID', { message: 'Ordem inválida' })
   }
 
   try {
@@ -364,7 +390,7 @@ async function reorderResumePairs(req, res) {
       currentPairIds.every(pairId => requestedPairIds.includes(pairId))
 
     if (!hasEveryPair) {
-      return res.status(400).json({ error: 'A nova ordem deve incluir cada par uma única vez' })
+      return respondError(req, res, 'RESUME_PAIR_INVALID', { message: 'A nova ordem deve incluir cada par uma única vez' })
     }
 
     const orderByPair = new Map(pairIds.map((pairId, index) => [String(pairId), index]))
@@ -375,8 +401,8 @@ async function reorderResumePairs(req, res) {
     await saveResumes(updated)
     req.io.emit('refresh_data')
     res.json({ message: 'Ordem dos currículos atualizada' })
-  } catch {
-    res.status(500).json({ error: 'Erro ao atualizar a ordem dos currículos' })
+  } catch (err) {
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -388,21 +414,21 @@ async function removeResumePair(req, res) {
     await saveResumes(updated)
     req.io.emit('refresh_data')
     res.json({ message: 'Par de currículos removido com sucesso' })
-  } catch {
-    res.status(500).json({ error: 'Erro ao remover o par de currículos' })
+  } catch (err) {
+    respondDatabaseError(req, res, err)
   }
 }
 
 async function removeResume(req, res) {
   const id = Number(req.params.id)
   if (!Number.isSafeInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'ID de currículo inválido' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'ID de currículo inválido' })
   }
   try {
     const resumes = await getResumes()
     const selectedResume = resumes.find(resume => resume.id === id)
     if (!selectedResume) {
-      return res.status(404).json({ error: 'Currículo não encontrado' })
+      return respondError(req, res, 'RESUME_NOT_FOUND')
     }
 
     const pairId = selectedResume.pairId || selectedResume.id
@@ -410,8 +436,8 @@ async function removeResume(req, res) {
     await saveResumes(updated)
     req.io.emit('refresh_data')
     res.json({ message: 'Par de currículos removido com sucesso' })
-  } catch {
-    res.status(500).json({ error: 'Erro interno ao remover currículo' })
+  } catch (err) {
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -421,12 +447,12 @@ async function editResume(req, res) {
   const normalizedDescription = typeof description === 'string' ? description : ''
 
   if (!Number.isSafeInteger(id) || id <= 0 || typeof name !== 'string' || !name.trim() || name.length > 150 || normalizedDescription.length > 1000) {
-    return res.status(400).json({ error: 'O nome é obrigatório' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'O nome é obrigatório' })
   }
 
 
   if (!['pt-BR', 'en'].includes(language)) {
-    return res.status(400).json({ error: 'Idioma do currículo inválido' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Idioma do currículo inválido' })
   }
 
   try {
@@ -434,7 +460,7 @@ async function editResume(req, res) {
 
     const resumeIndex = resumes.findIndex(r => r.id === id)
     if (resumeIndex === -1) {
-      return res.status(404).json({ error: 'Currículo não encontrado' })
+      return respondError(req, res, 'RESUME_NOT_FOUND')
     }
 
     resumes[resumeIndex].name = name.trim()
@@ -449,7 +475,7 @@ async function editResume(req, res) {
     
     res.json({ message: 'Currículo atualizado com sucesso', resume: resumes[resumeIndex] })
   } catch (err) {
-    res.status(500).json({ error: 'Erro interno ao atualizar currículo' })
+    respondDatabaseError(req, res, err)
   }
 }
 

@@ -1,9 +1,24 @@
 const responseCache = new Map()
 const CACHE_TTL_MS = 5 * 60 * 1000
 const GITHUB_TIMEOUT_MS = 10 * 1000
+const { respondError, classifyGithubError } = require('../utils/apiErrors')
 
 function githubFetch(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(GITHUB_TIMEOUT_MS) })
+}
+
+function githubResponseError(response) {
+  const error = new Error('GitHub upstream request failed')
+  error.upstreamStatus = response.status
+  error.rateLimited = response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0'
+  return error
+}
+
+function respondGithubFailure(req, res, error) {
+  return respondError(req, res, classifyGithubError(error), {
+    cause: error,
+    upstreamStatus: error.upstreamStatus
+  })
 }
 
 function getCached(key) {
@@ -31,7 +46,7 @@ async function getRepos(req, res) {
 
   try {
     const config = getGithubConfig()
-    if (!config) return res.status(503).json({ error: 'Integração com GitHub não configurada' })
+    if (!config) return respondError(req, res, 'GITHUB_NOT_CONFIGURED')
     const reposRes = await githubFetch(
       `https://api.github.com/users/${encodeURIComponent(config.username)}/repos?sort=updated&per_page=20`,
       {
@@ -42,7 +57,7 @@ async function getRepos(req, res) {
       }
     )
 
-    if (!reposRes.ok) throw new Error(`GitHub REST retornou HTTP ${reposRes.status}`)
+    if (!reposRes.ok) throw githubResponseError(reposRes)
 
     const repos = await reposRes.json()
     if (!Array.isArray(repos)) throw new Error('Resposta inesperada da API do GitHub')
@@ -114,7 +129,7 @@ async function getRepos(req, res) {
     setCached('repos', formatted)
     res.json(formatted)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar repositórios do GitHub' })
+    respondGithubFailure(req, res, err)
   }
 }
 
@@ -124,7 +139,7 @@ async function getContributions(req, res) {
 
   try {
     const config = getGithubConfig()
-    if (!config) return res.status(503).json({ error: 'Integração com GitHub não configurada' })
+    if (!config) return respondError(req, res, 'GITHUB_NOT_CONFIGURED')
     const query = `
       query($username: String!) {
         user(login: $username) {
@@ -156,12 +171,12 @@ async function getContributions(req, res) {
       })
     })
 
-    if (!response.ok) throw new Error(`GitHub GraphQL retornou HTTP ${response.status}`)
+    if (!response.ok) throw githubResponseError(response)
 
     const data = await response.json()
 
     if (data.errors) {
-      return res.status(502).json({ error: 'Erro ao consultar contribuições no GitHub' })
+      return respondGithubFailure(req, res, new Error('GitHub GraphQL errors'))
     }
 
     const calendar = data.data.user.contributionsCollection.contributionCalendar
@@ -173,7 +188,7 @@ async function getContributions(req, res) {
     setCached('contributions', result)
     res.json(result)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar contribuições do GitHub' })
+    respondGithubFailure(req, res, err)
   }
 }
 
@@ -183,7 +198,7 @@ async function getLanguages(req, res) {
 
   try {
     const config = getGithubConfig()
-    if (!config) return res.status(503).json({ error: 'Integração com GitHub não configurada' })
+    if (!config) return respondError(req, res, 'GITHUB_NOT_CONFIGURED')
     const query = `
       query($username: String!) {
         user(login: $username) {
@@ -217,12 +232,12 @@ async function getLanguages(req, res) {
       })
     })
 
-    if (!response.ok) throw new Error(`GitHub GraphQL retornou HTTP ${response.status}`)
+    if (!response.ok) throw githubResponseError(response)
 
     const data = await response.json()
 
     if (data.errors) {
-      return res.status(502).json({ error: 'Erro ao consultar linguagens no GitHub' })
+      return respondGithubFailure(req, res, new Error('GitHub GraphQL errors'))
     }
 
     const repos = data.data.user.repositories.nodes
@@ -262,7 +277,7 @@ async function getLanguages(req, res) {
     setCached('languages', result)
     res.json(result)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar linguagens do GitHub' })
+    respondGithubFailure(req, res, err)
   }
 }
 

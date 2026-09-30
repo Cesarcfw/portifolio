@@ -78,6 +78,7 @@ flowchart LR
 ```
 
 Uma descrição mais detalhada dos componentes e fluxos está disponível em [DOCUMENTATION.md](./DOCUMENTATION.md).
+Os códigos retornados pela API e as orientações de diagnóstico estão em [docs/ERRORS.md](./docs/ERRORS.md).
 
 ## ✅ Pré-requisitos
 
