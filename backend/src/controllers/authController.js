@@ -4,6 +4,7 @@ const crypto = require('crypto')
 const { Resend } = require('resend')
 const userModel = require('../models/userModel')
 const { normalizeEmail, isValidEmail, isValidPassword, escapeHtml, normalizeHttpOrigin } = require('../utils/security')
+const { respondError, respondDatabaseError } = require('../utils/apiErrors')
 
 const RESET_RESPONSE = { message: 'Se o e-mail estiver cadastrado, as instruções de recuperação serão enviadas.' }
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('timing-comparison-placeholder', 10)
@@ -27,21 +28,22 @@ async function register(req, res) {
   const { password, setupKey } = req.body
   try {
     if (!safeEqual(setupKey, process.env.ADMIN_SETUP_KEY)) {
-      return res.status(403).json({ error: 'Chave de configuração inicial inválida.' })
+      return respondError(req, res, 'ADMIN_SETUP_DENIED', { message: 'Chave de configuração inicial inválida.' })
     }
 
     if (!isValidEmail(email) || !isValidPassword(password)) {
-      return res.status(400).json({ error: 'Informe um e-mail válido e uma senha entre 12 e 128 caracteres.' })
+      return respondError(req, res, 'INVALID_INPUT', { message: 'Informe um e-mail válido e uma senha entre 12 e 128 caracteres.' })
     }
 
     const passwordHash = await bcrypt.hash(password, 10)
     const result = await userModel.createFirstAdmin(email, passwordHash)
     if (!result.created) {
-      return res.status(403).json({ error: 'O registro de novos administradores está desativado.' })
+      return respondError(req, res, 'ADMIN_SETUP_DENIED', { message: 'O registro de novos administradores está desativado.' })
     }
     res.status(201).json({ id: result.id, email })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao registrar usuário' })
+    if (err.code) return respondDatabaseError(req, res, err)
+    respondError(req, res, 'INTERNAL_ERROR', { cause: err })
   }
 }
 
@@ -52,12 +54,12 @@ async function login(req, res) {
   const email = normalizeEmail(req.body.email)
   const { password } = req.body
   if (!isValidEmail(email) || typeof password !== 'string' || password.length > 128) {
-    return res.status(401).json({ error: 'Credenciais inválidas' })
+    return respondError(req, res, 'AUTH_INVALID_CREDENTIALS')
   }
   try {
     const user = await userModel.findByEmail(email)
     const valid = await bcrypt.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH)
-    if (!user || !valid) return res.status(401).json({ error: 'Credenciais inválidas' })
+    if (!user || !valid) return respondError(req, res, 'AUTH_INVALID_CREDENTIALS')
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
@@ -66,7 +68,8 @@ async function login(req, res) {
     )
     res.json({ token })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao fazer login' })
+    if (err.code) return respondDatabaseError(req, res, err)
+    respondError(req, res, 'INTERNAL_ERROR', { cause: err })
   }
 }
 
@@ -123,18 +126,18 @@ async function forgotPassword(req, res) {
 async function resetPassword(req, res) {
   const { token, newPassword } = req.body
   if (typeof token !== 'string' || !isValidPassword(newPassword)) {
-    return res.status(400).json({ error: 'Token inválido ou senha fora do padrão de 12 a 128 caracteres.' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Token inválido ou senha fora do padrão de 12 a 128 caracteres.' })
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
     if (decoded.purpose !== 'reset') {
-      return res.status(400).json({ error: 'Token inválido para esta operação' })
+      return respondError(req, res, 'PASSWORD_RESET_INVALID', { message: 'Token inválido para esta operação' })
     }
 
     const user = await userModel.findByEmail(decoded.email)
     if (!user || !safeEqual(decoded.passwordVersion, passwordVersion(user.password_hash))) {
-      return res.status(400).json({ error: 'Token inválido ou já utilizado' })
+      return respondError(req, res, 'PASSWORD_RESET_INVALID', { message: 'Token inválido ou já utilizado' })
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10)
@@ -143,9 +146,13 @@ async function resetPassword(req, res) {
     res.json({ message: 'Senha atualizada com sucesso!' })
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
-      return res.status(400).json({ error: 'Token expirado' })
+      return respondError(req, res, 'PASSWORD_RESET_INVALID', { message: 'Token expirado' })
     }
-    res.status(400).json({ error: 'Token inválido ou erro ao redefinir senha' })
+    if (err.name === 'JsonWebTokenError' || err.name === 'NotBeforeError') {
+      return respondError(req, res, 'PASSWORD_RESET_INVALID', { message: 'Token inválido ou erro ao redefinir senha' })
+    }
+    if (err.code) return respondDatabaseError(req, res, err)
+    respondError(req, res, 'INTERNAL_ERROR', { cause: err })
   }
 }
 

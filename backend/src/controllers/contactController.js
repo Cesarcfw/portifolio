@@ -1,5 +1,6 @@
 const { Resend } = require('resend')
 const { normalizeEmail, isValidEmail, escapeHtml } = require('../utils/security')
+const { respondError } = require('../utils/apiErrors')
 
 async function sendMessage(req, res) {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : ''
@@ -7,13 +8,13 @@ async function sendMessage(req, res) {
   const message = typeof req.body.message === 'string' ? req.body.message.trim() : ''
 
   if (!name || name.length > 100 || !isValidEmail(email) || !message || message.length > 5000) {
-    return res.status(400).json({ error: 'Preencha os campos com dados válidos' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Preencha os campos com dados válidos' })
   }
 
   try {
     const targetEmail = process.env.MY_EMAIL || process.env.EMAIL_USER
     if (!process.env.RESEND_API_KEY || !targetEmail) {
-      return res.status(500).json({ error: 'Serviço de e-mail não configurado no servidor' })
+      return respondError(req, res, 'EMAIL_NOT_CONFIGURED', { message: 'Serviço de e-mail não configurado no servidor' })
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY)
@@ -32,14 +33,12 @@ async function sendMessage(req, res) {
     })
 
     if (error) {
-      console.error('Resend API Error:', error)
-      return res.status(500).json({ error: 'Erro ao enviar mensagem pela API' })
+      return respondError(req, res, 'EMAIL_DELIVERY_FAILED', { cause: error, message: 'Erro ao enviar mensagem pela API' })
     }
 
     res.json({ message: 'Mensagem enviada!' })
   } catch (err) {
-    console.error('Erro inesperado no envio pelo Resend:', err)
-    res.status(500).json({ error: 'Erro ao enviar mensagem' })
+    respondError(req, res, 'EMAIL_DELIVERY_FAILED', { cause: err })
   }
 }
 

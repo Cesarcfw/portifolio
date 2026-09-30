@@ -28,6 +28,7 @@ const skillsRoutes = require('./routes/skillsRoutes')
 const experienceRoutes = require('./routes/experienceRoutes')
 const { apiLimiter } = require('./middleware/rateLimiter')
 const { normalizeHttpOrigin } = require('./utils/security')
+const { respondError } = require('./utils/apiErrors')
 
 const app = express()
 app.set('trust proxy', 1)
@@ -94,19 +95,18 @@ app.get('/', (req, res) => {
 })
 
 app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'Rota não encontrada' })
+  respondError(req, res, 'NOT_FOUND', { message: 'Rota não encontrada' })
 })
 
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err)
   if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Corpo da requisição excede o limite permitido' })
+    return respondError(req, res, 'PAYLOAD_TOO_LARGE')
   }
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    return res.status(400).json({ error: 'JSON inválido' })
+    return respondError(req, res, 'INVALID_JSON')
   }
-  console.error('Erro não tratado na API:', err)
-  res.status(500).json({ error: 'Erro interno do servidor' })
+  respondError(req, res, 'INTERNAL_ERROR', { cause: err })
 })
 
 const PORT = process.env.PORT || 3000

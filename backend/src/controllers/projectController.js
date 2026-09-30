@@ -1,6 +1,7 @@
 const projectModel = require('../models/projectModel')
 const dbMonitor = require('../services/dbMonitor')
 const { isHttpUrl } = require('../utils/security')
+const { respondError, respondDatabaseError } = require('../utils/apiErrors')
 
 const PROJECT_STATUSES = new Set(['concluido', 'em_andamento', 'pausado'])
 
@@ -34,7 +35,7 @@ async function getAll(req, res) {
     res.json(projects)
   } catch (err) {
     dbMonitor.notifyFailure(err)
-    res.status(500).json({ error: 'Erro ao buscar projetos' })
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -48,7 +49,7 @@ async function getFeatured(req, res) {
     res.json(projects)
   } catch (err) {
     dbMonitor.notifyFailure(err)
-    res.status(500).json({ error: 'Erro ao buscar projetos em destaque' })
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -57,13 +58,13 @@ async function getFeatured(req, res) {
  */
 async function getById(req, res) {
   const id = parseProjectId(req.params.id)
-  if (!id) return res.status(400).json({ error: 'ID de projeto inválido' })
+  if (!id) return respondError(req, res, 'INVALID_INPUT', { message: 'ID de projeto inválido' })
   try {
     const project = await projectModel.getById(id)
-    if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
+    if (!project) return respondError(req, res, 'NOT_FOUND', { message: 'Projeto não encontrado' })
     res.json(project)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar projeto' })
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -72,14 +73,14 @@ async function getById(req, res) {
  */
 async function create(req, res) {
   if (!validateProject(req.body)) {
-    return res.status(400).json({ error: 'Dados do projeto inválidos ou incompletos' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Dados do projeto inválidos ou incompletos' })
   }
   try {
     const id = await projectModel.create(req.body)
     req.io.emit('refresh_data')
     res.status(201).json({ id })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar projeto' })
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -89,14 +90,14 @@ async function create(req, res) {
 async function update(req, res) {
   const id = parseProjectId(req.params.id)
   if (!id || !validateProject(req.body)) {
-    return res.status(400).json({ error: 'Dados do projeto inválidos ou incompletos' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Dados do projeto inválidos ou incompletos' })
   }
   try {
     await projectModel.update(id, req.body)
     req.io.emit('refresh_data')
     res.json({ message: 'Projeto atualizado!' })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar projeto' })
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -105,13 +106,13 @@ async function update(req, res) {
  */
 async function remove(req, res) {
   const id = parseProjectId(req.params.id)
-  if (!id) return res.status(400).json({ error: 'ID de projeto inválido' })
+  if (!id) return respondError(req, res, 'INVALID_INPUT', { message: 'ID de projeto inválido' })
   try {
     await projectModel.remove(id)
     req.io.emit('refresh_data')
     res.json({ message: 'Projeto deletado!' })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao deletar projeto' })
+    respondDatabaseError(req, res, err)
   }
 }
 

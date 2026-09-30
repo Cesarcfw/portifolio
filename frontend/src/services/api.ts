@@ -4,36 +4,49 @@
  */
 const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/api'
 
+export class ApiError extends Error {
+  code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
+async function getPublic(path: string) {
+  const res = await fetch(`${BASE_URL}${path}`)
+  const data = await res.json().catch(() => {
+    throw new ApiError('API_INVALID_RESPONSE', 'Resposta inválida da API')
+  })
+  if (!res.ok) throw new ApiError(data.code || 'INTERNAL_ERROR', data.error || 'Erro na API')
+  return data
+}
+
 // Projetos
 export async function getProjects() {
-  const res = await fetch(`${BASE_URL}/projects`)
-  return res.json()
+  return getPublic('/projects')
 }
 
 export async function getFeaturedProjects() {
-  const res = await fetch(`${BASE_URL}/projects/featured`)
-  return res.json()
+  return getPublic('/projects/featured')
 }
 
 // GitHub
 export async function getGithubRepos() {
-  const res = await fetch(`${BASE_URL}/github/repos`)
-  return res.json()
+  return getPublic('/github/repos')
 }
 
 export async function getGithubContributions() {
-  const res = await fetch(`${BASE_URL}/github/contributions`)
-  return res.json()
+  return getPublic('/github/contributions')
 }
 
 export async function getGithubLanguages() {
-  const res = await fetch(`${BASE_URL}/github/languages`)
-  return res.json()
+  return getPublic('/github/languages')
 }
 
 export async function getGithubVersion() {
-  const res = await fetch(`${BASE_URL}/github/version`)
-  return res.json()
+  return getPublic('/github/version')
 }
 
 // Auth

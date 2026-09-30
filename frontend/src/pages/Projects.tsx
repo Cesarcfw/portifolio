@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getProjects, getGithubRepos } from '../services/api'
+import { ApiError, getProjects, getGithubRepos } from '../services/api'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface Project {
@@ -46,7 +46,7 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [repos, setRepos] = useState<Repo[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -56,15 +56,11 @@ export default function Projects() {
           getGithubRepos()
         ])
 
-        if (proj.error || rep.error) {
-          throw new Error('API Error')
-        }
-
         setProjects(proj || [])
         setRepos(rep || [])
       } catch (err) {
         console.error("Erro ao carregar projetos:", err)
-        setError(true)
+        setError(err instanceof ApiError ? err.code : 'NETWORK_ERROR')
       } finally {
         setLoading(false)
       }
@@ -82,6 +78,8 @@ export default function Projects() {
   }, [error])
 
   if (error) {
+    const isGithubError = error.startsWith('GITHUB_')
+    const isNetworkError = error === 'NETWORK_ERROR'
     return (
       <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
         <div className="relative mb-8 flex justify-center">
@@ -93,21 +91,24 @@ export default function Projects() {
           */}
           <img 
             src="https://media.tenor.com/lcDEp7V0E6wAAAAC/cryptoadz-coffee-time.gif" 
-            alt={isEnglish ? 'Server starting' : 'Servidor iniciando'}
+            alt={isEnglish ? 'Service unavailable' : 'Serviço indisponível'}
             className="w-32 h-32 rounded-xl object-cover shadow-lg pixelated"
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
         
         <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-          {isEnglish ? 'The server is starting...' : 'Estamos iniciando o servidor...'}
+          {isGithubError
+            ? (isEnglish ? 'GitHub data is temporarily unavailable' : 'Dados do GitHub temporariamente indisponíveis')
+            : isNetworkError
+              ? (isEnglish ? 'Unable to reach the server' : 'Não foi possível acessar o servidor')
+              : (isEnglish ? 'Data is temporarily unavailable' : 'Dados temporariamente indisponíveis')}
         </h1>
         
         <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
-          {isEnglish
-            ? <>The first request may take about <strong>50 seconds</strong> while the server starts.</>
-            : <>O primeiro acesso pode levar cerca de <strong>50 segundos</strong> enquanto o servidor inicia.</>}
+          {isEnglish ? 'Please try again in a moment.' : 'Tente novamente em alguns instantes.'}
         </p>
+        {error !== 'NETWORK_ERROR' && <p className="text-xs text-gray-500 mb-6">{error}</p>}
         
         <button 
           onClick={() => window.location.reload()} 

@@ -1,4 +1,5 @@
 const skillsModel = require('../models/skillsModel')
+const { respondError, respondDatabaseError } = require('../utils/apiErrors')
 
 function isValidSkill({ name, name_en, category, category_en, level, color }) {
   return [name, name_en, category, category_en].every(value =>
@@ -12,14 +13,14 @@ async function getSkills(req, res) {
     const skills = await skillsModel.getAll()
     res.json(skills)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar habilidades' })
+    respondDatabaseError(req, res, err)
   }
 }
 
 async function createSkill(req, res) {
   const { name, name_en, category, category_en, level, color } = req.body
   if (!isValidSkill({ name, name_en, category, category_en, level, color })) {
-    return res.status(400).json({ error: 'Dados da habilidade inválidos ou incompletos' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Dados da habilidade inválidos ou incompletos' })
   }
 
   try {
@@ -27,7 +28,7 @@ async function createSkill(req, res) {
     req.io.emit('refresh_data')
     res.status(201).json({ id, name, name_en, category, category_en, level, color })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar habilidade' })
+    respondDatabaseError(req, res, err)
   }
 }
 
@@ -35,7 +36,7 @@ async function updateSkill(req, res) {
   const id = Number(req.params.id)
   const { name, name_en, category, category_en, level, color } = req.body
   if (!Number.isInteger(id) || id <= 0 || !isValidSkill({ name, name_en, category, category_en, level, color })) {
-    return res.status(400).json({ error: 'Dados da habilidade inválidos ou incompletos' })
+    return respondError(req, res, 'INVALID_INPUT', { message: 'Dados da habilidade inválidos ou incompletos' })
   }
 
   try {
@@ -43,19 +44,19 @@ async function updateSkill(req, res) {
     req.io.emit('refresh_data')
     res.json({ message: 'Habilidade atualizada com sucesso' })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar habilidade' })
+    respondDatabaseError(req, res, err)
   }
 }
 
 async function removeSkill(req, res) {
   const id = Number(req.params.id)
-  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' })
+  if (!Number.isInteger(id) || id <= 0) return respondError(req, res, 'INVALID_INPUT', { message: 'ID inválido' })
   try {
     await skillsModel.remove(id)
     req.io.emit('refresh_data')
     res.json({ message: 'Habilidade removida com sucesso' })
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao remover habilidade' })
+    respondDatabaseError(req, res, err)
   }
 }
 
