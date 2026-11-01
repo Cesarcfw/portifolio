@@ -14,7 +14,7 @@
     "build": "npm run build --prefix frontend",
     "lint": "npm run lint --prefix frontend",
     "test": "npm test --prefix backend",
-    "check": "npm run test && npm run lint && npm run build"
+    "check": "npm run test && npm run test --prefix frontend && npm run lint && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

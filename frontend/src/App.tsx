@@ -11,17 +11,17 @@ import Contact from './pages/Contact'
 import Admin from './pages/Admin'
 
 import ResetPassword from './pages/ResetPassword'
+import NotFound from './pages/NotFound'
 
 const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const socket = io(socketUrl)
 
 function App() {
   useEffect(() => {
-    socket.on('refresh_data', () => {
-      window.location.reload()
-    })
+    const refresh = () => window.dispatchEvent(new Event('portfolio:refresh'))
+    socket.on('refresh_data', refresh)
     return () => {
-      socket.off('refresh_data')
+      socket.off('refresh_data', refresh)
     }
   }, [])
 
@@ -30,7 +30,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
         <Navbar />
-        <div className="pt-16">
+        <div className="pt-[72px]">
           <Routes>
             <Route path="/"         element={<Home />} />
             <Route path="/projetos" element={<Projects />} />
@@ -38,6 +38,7 @@ function App() {
             <Route path="/contato"  element={<Contact />} />
             <Route path="/admin"    element={<Admin />} />
             <Route path="/admin/reset" element={<ResetPassword />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
         </BrowserRouter>

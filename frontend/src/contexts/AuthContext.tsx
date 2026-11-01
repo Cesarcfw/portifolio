@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { AuthContext } from './auth-context'
+import { useLanguage } from './LanguageContext'
+import { englishUi } from '../utils/uiTranslations'
 
 function getTokenExpiration(currentToken: string | null): number | null {
   if (!currentToken) return null
@@ -17,6 +19,7 @@ function getTokenExpiration(currentToken: string | null): number | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { isEnglish } = useLanguage()
   function checkToken(currentToken: string | null) {
     const expiration = getTokenExpiration(currentToken)
     return expiration !== null && expiration > Date.now()
@@ -47,11 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const expiration = getTokenExpiration(token)
     const timeLeft = Math.max(0, (expiration || 0) - Date.now())
     const timer = setTimeout(() => {
-      if (timeLeft > 0) alert('Sua sessão expirou. Por favor, faça login novamente.')
+      if (timeLeft > 0) alert(isEnglish ? englishUi('Sua sessão expirou. Por favor, faça login novamente.') : 'Sua sessão expirou. Por favor, faça login novamente.')
       logout()
     }, timeLeft)
     return () => clearTimeout(timer)
-  }, [token, logout])
+  }, [token, logout, isEnglish])
 
   return (
     <AuthContext.Provider value={{ token, login, logout, isAuthenticated: !!token }}>

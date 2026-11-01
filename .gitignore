@@ -123,3 +123,6 @@ frontend/dist-ssr/
 *.sw?
 
 HANDOFF.md
+
+# Local design review artifacts
+.taste-skill/
