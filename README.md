@@ -1,6 +1,6 @@
-# Portfólio Full-Stack — César
+# Portfólio — César | Backend e Full Stack
 
-Aplicação web de portfólio para apresentação de projetos, habilidades e experiências, com formulário de contato e painel administrativo autenticado. O projeto separa a interface React de uma API REST em Node.js, persiste os dados em MySQL e distribui atualizações por Socket.IO.
+Portfólio para apresentação da atuação de César em desenvolvimento Backend e Full Stack, com projetos, habilidades, experiências, formulário de contato e painel administrativo autenticado. O projeto separa a interface React de uma API REST em Node.js, persiste os dados em MySQL e distribui atualizações por Socket.IO.
 
 ## 🌐 Projeto publicado
 
@@ -23,14 +23,14 @@ Aplicação web de portfólio para apresentação de projetos, habilidades e exp
 ## ✨ Funcionalidades
 
 - Exibição de projetos, habilidades, experiências e informações do perfil.
-- Interface pública em português do Brasil e inglês, com preferência de idioma salva no navegador.
+- Interface pública e painel administrativo em português do Brasil e inglês, com preferência de idioma salva no navegador.
 - Painel administrativo protegido para gerenciar projetos, habilidades, experiências, configurações e currículos.
 - Conteúdo dinâmico de projetos, habilidades, experiências e configurações com campos em português e inglês.
 - Cadastro obrigatório de currículos em pares (`pt-BR` e `en`), vínculo ou complementação de registros antigos, ordenação pelo painel, substituição individual do PDF e exibição das duas versões lado a lado.
 - Autenticação de administrador com JWT e armazenamento de senhas com bcrypt.
 - Recuperação de senha e envio do formulário de contato por e-mail com Resend.
 - Consulta de repositórios, contribuições, linguagens e versão do portfólio pela API do GitHub.
-- Preservação das descrições originais dos repositórios do GitHub, sem envio do conteúdo para serviços automáticos de tradução.
+- Traduções manuais revisadas dos textos públicos atuais, incluindo descrições dos repositórios do GitHub, sem envio do conteúdo para serviços automáticos de tradução. Os dados originais são preservados.
 - Atualização dos clientes conectados após alterações administrativas por Socket.IO.
 - Limitação de requisições nas rotas de autenticação e contato.
 - Cache e limitação de requisições nas consultas públicas ao GitHub.
@@ -138,7 +138,7 @@ Antes de publicar, execute a verificação local completa:
 npm run check
 ```
 
-Esse comando executa os testes do backend, o ESLint do frontend e o build de produção.
+Esse comando executa os testes do backend, os testes do cliente HTTP do frontend, o ESLint e o build de produção.
 
 ## 🔐 Variáveis de ambiente
 
@@ -184,7 +184,7 @@ O arquivo [`backend/src/database/migrate.js`](./backend/src/database/migrate.js)
 
 O banco definido por `DB_NAME` deve existir antes da migração. O comando `npm run db:migrate` executa `backend/src/database/migrate.js`, que cria as tabelas, mas não cria a instância nem o banco MySQL.
 
-A migração também adiciona, em bancos existentes, as colunas de tradução usadas por projetos, habilidades e experiências. Ela preserva os textos atuais; traduções ainda não cadastradas devem ser preenchidas pelo painel administrativo.
+A migração também adiciona, em bancos existentes, as colunas de tradução usadas por projetos, habilidades e experiências. Ela preserva os textos atuais. O frontend possui um catálogo manual dos textos públicos atuais e sugere as versões inglesas conhecidas no painel; a persistência nos campos do banco só ocorre ao salvar. Textos novos sem correspondência devem ter seus campos ingleses preenchidos pelo painel administrativo.
 
 Separadamente, durante a inicialização da API, `backend/src/app.js` testa a conexão, garante a existência das tabelas `settings`, `skills` e `experiences` e insere os dados iniciais de habilidades e experiências quando as respectivas tabelas estão vazias. Esse processo é independente da configuração do serviço de e-mail.
 

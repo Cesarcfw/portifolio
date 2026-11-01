@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { getGithubVersion } from '../services/api'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -7,6 +7,7 @@ export default function Navbar() {
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [version, setVersion] = useState('')
+  const menuButton = useRef<HTMLButtonElement>(null)
   const { language, setLanguage, isEnglish } = useLanguage()
 
   useEffect(() => {
@@ -27,21 +28,22 @@ export default function Navbar() {
   ]
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50">
-      <div className="bg-gray-950/95 backdrop-blur-md border-b border-gray-800/50">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+    <nav aria-label={isEnglish ? 'Main navigation' : 'Navegação principal'} className="portfolio-nav fixed top-0 left-0 right-0 z-50">
+      <a className="skip-link" href="#main-content">{isEnglish ? 'Skip to content' : 'Ir para o conteúdo'}</a>
+      <div className="nav-surface">
+        <div className="nav-inner mx-auto px-6 flex items-center justify-between">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
+          <Link to="/" className="flex items-center gap-3 group shrink-0 whitespace-nowrap" onClick={() => setIsOpen(false)}>
             <img 
               src="/favicon.png" 
-              alt="Logo" 
+              alt=""
               className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform" 
             />
             <span className="text-white font-semibold text-sm sm:text-base flex items-center gap-2">
-              {isEnglish ? 'Professional portfolio' : 'Portfólio profissional'} <span className="text-teal-400">Dev</span>
+              César<span className="nav-wordmark-detail"> / dev</span>
               {version && (
-                <span className="text-[10px] font-normal bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full scale-90 sm:scale-100">
+                <span className="text-[13px] font-normal bg-teal-500/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full">
                   {version}
                 </span>
               )}
@@ -49,15 +51,16 @@ export default function Navbar() {
           </Link>
 
           {/* Links desktop */}
-          <div className="hidden sm:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1">
             {links.map(link => (
               <Link
                 key={link.path}
                 to={link.path}
+                aria-current={location.pathname === link.path ? 'page' : undefined}
                 className={`relative px-4 py-2 rounded-lg text-sm transition-all duration-200 ${
                   location.pathname === link.path
-                    ? 'text-white bg-gray-800/80'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                    ? 'nav-link is-current'
+                    : 'nav-link'
                 }`}
               >
                 {link.label}
@@ -69,8 +72,8 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setLanguage(language === 'pt-BR' ? 'en' : 'pt-BR')}
-              className="ml-2 border border-gray-700 rounded-lg px-3 py-2 text-xs text-teal-400 hover:border-teal-500/50 transition"
-              aria-label={isEnglish ? 'Mudar idioma para português' : 'Switch language to English'}
+              className="language-toggle"
+              aria-label={isEnglish ? 'Switch language to Portuguese (Brazil)' : 'Mudar idioma para inglês'}
             >
               {isEnglish ? 'PT' : 'EN'}
             </button>
@@ -78,9 +81,13 @@ export default function Navbar() {
 
           {/* Botão hamburger mobile */}
           <button
+            ref={menuButton}
             onClick={() => setIsOpen(!isOpen)}
-            className="sm:hidden relative w-8 h-8 flex flex-col items-center justify-center gap-1.5"
+            className="md:hidden relative w-11 h-11 flex flex-col items-center justify-center gap-1.5"
             aria-label="Menu"
+            aria-expanded={isOpen}
+            aria-controls="mobile-navigation"
+            onKeyDown={event => { if (event.key === 'Escape') setIsOpen(false) }}
           >
             <span className={`block w-5 h-0.5 bg-gray-300 rounded-full transition-all duration-300 ${isOpen ? 'rotate-45 translate-y-[4px]' : ''}`} />
             <span className={`block w-5 h-0.5 bg-gray-300 rounded-full transition-all duration-300 ${isOpen ? 'opacity-0 scale-0' : ''}`} />
@@ -91,12 +98,13 @@ export default function Navbar() {
       </div>
 
       {/* Menu mobile */}
-      <div className={`sm:hidden overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-64' : 'max-h-0'}`}>
-        <div className="bg-gray-950/98 backdrop-blur-md border-b border-gray-800/50 px-6 py-3 flex flex-col gap-1">
+      {isOpen && <div id="mobile-navigation" className="mobile-navigation md:hidden" onKeyDown={event => { if (event.key === 'Escape') { setIsOpen(false); menuButton.current?.focus() } }}>
+        <div className="px-6 py-3 flex flex-col gap-1">
           {links.map(link => (
             <Link
               key={link.path}
               to={link.path}
+              aria-current={location.pathname === link.path ? 'page' : undefined}
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 ${
                 location.pathname === link.path
@@ -121,7 +129,7 @@ export default function Navbar() {
             {isEnglish ? 'Português (Brasil)' : 'English'}
           </button>
         </div>
-      </div>
+      </div>}
     </nav>
   )
 }

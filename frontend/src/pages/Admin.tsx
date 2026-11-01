@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/auth-context'
+import AdminField from '../components/AdminField'
+import AdminNotice from '../components/AdminNotice'
+import { useUiText } from '../hooks/useUiText'
+import { englishContent } from '../utils/contentTranslations'
+import { statusEnglish } from '../utils/statusTranslations'
+import { useLanguage } from '../contexts/LanguageContext'
 import { 
   login as loginApi, 
   getProjects, 
@@ -20,7 +26,8 @@ import {
   getExperiences,
   createExperience,
   updateExperience,
-  removeExperience
+  removeExperience,
+  readResponse, ApiError
 } from '../services/api'
 
 interface Project {
@@ -102,8 +109,12 @@ function getUnpairedCandidates(resumes: Resume[], language: 'pt-BR' | 'en', excl
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 export default function Admin() {
+  const { isEnglish } = useLanguage()
+  const t = useUiText()
   const { isAuthenticated, token, login, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<'projects' | 'resumes' | 'skills' | 'experiences' | 'settings'>('projects')
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
   
   // Auth States
   const [email, setEmail] = useState('')
@@ -174,12 +185,53 @@ export default function Admin() {
     company: '', company_en: '', role: '', role_en: '', period: '', period_en: '', description: '', description_en: '', techs: '', type: 'work', order_index: 0
   })
   const [expMessage, setExpMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+
+  function guard<T extends unknown[]>(action: (...args: T) => Promise<void>, feedback: (message: string) => void) {
+    return async (...args: T) => {
+      const event = args[0] as { preventDefault?: () => void } | undefined
+      event?.preventDefault?.()
+      if (busyRef.current) return
+      busyRef.current = true
+      setBusy(true)
+      try {
+        await action(...args)
+      } catch (error) {
+        feedback(error instanceof ApiError && /401|TOKEN|UNAUTHORIZED|AUTH_REQUIRED/.test(error.code)
+          ? 'Não foi possível autorizar a operação. Seus campos foram preservados; confira sua sessão antes de tentar novamente.'
+          : 'Não foi possível concluir a operação. Seu preenchimento foi preservado. Confira a conexão e tente novamente.')
+      } finally {
+        busyRef.current = false
+        setBusy(false)
+      }
+    }
+  }
+
+  const handleSaveSettings = guard(saveSettings, setSettingsMessage)
+  const handleUploadResume = guard(uploadResume, setResumeMessage)
+  const handleSaveEditedResume = guard(saveEditedResume, setResumeMessage)
+  const handleUploadCounterpart = guard(uploadCounterpart, setResumeMessage)
+  const handleLinkExistingCounterpart = guard(linkExistingCounterpart, setResumeMessage)
+  const handleReplaceResumeFile = guard(replaceFile, setResumeMessage)
+  const handleDeleteResumePair = guard(deleteResumePair, setResumeMessage)
+  const handleMoveResumePair = guard(moveResumePair, setResumeMessage)
+  const handleSaveSkill = guard(saveSkill, setSkillsMessage)
+  const handleDeleteSkill = guard(deleteSkill, setSkillsMessage)
+  const handleSaveExperience = guard(saveExperience, setExpMessage)
+  const handleDeleteExperience = guard(deleteExperience, setExpMessage)
+  const handleLogin = guard(signIn, setLoginError)
+  const handleForgotPassword = guard(recoverPassword, message => { setSuccessMessage(''); setLoginError(message) })
+  const handleSaveProject = guard(saveProject, setSuccessMessage)
+  const handleDeleteProject = guard(deleteProject, setSuccessMessage)
 
   useEffect(() => {
-    if (isAuthenticated) loadData()
+    if (isAuthenticated) loadData(true)
   }, [isAuthenticated])
 
-  async function loadData() {
+  async function loadData(includeSettings = false) {
+    setLoading(true)
+    setLoadError('')
     try {
       const [projData, settsData, skillsData, expData] = await Promise.all([
         getProjects(),
@@ -187,20 +239,31 @@ export default function Admin() {
         getSkills(),
         getExperiences()
       ])
-      setProjects(projData || [])
-      setSkills(skillsData || [])
-      setExperiences(expData || [])
+      setProjects((projData || []).map((p: Project) => ({ ...p,
+        title_en: englishContent(p.title, p.title_en) || '',
+        description_en: englishContent(p.description, p.description_en) || ''
+      })))
+      setSkills((skillsData || []).map((s: Skill) => ({ ...s,
+        name_en: englishContent(s.name, s.name_en) || '',
+        category_en: englishContent(s.category, s.category_en) || ''
+      })))
+      setExperiences((expData || []).map((e: Experience) => ({ ...e,
+        company_en: englishContent(e.company, e.company_en) || '',
+        role_en: englishContent(e.role, e.role_en) || '',
+        period_en: englishContent(e.period, e.period_en) || '',
+        description_en: englishContent(e.description, e.description_en) || ''
+      })))
       
       if (settsData) {
-        setSettings({
+        if (includeSettings) setSettings({
           availability_text: settsData.availability_text || '',
-          availability_text_en: settsData.availability_text_en || '',
+          availability_text_en: settsData.availability_text_en || statusEnglish(settsData.availability_text) || '',
           job_status_text: settsData.job_status_text || '',
-          job_status_text_en: settsData.job_status_text_en || '',
+          job_status_text_en: settsData.job_status_text_en || statusEnglish(settsData.job_status_text) || '',
           resumes_description: settsData.resumes_description || '',
-          resumes_description_en: settsData.resumes_description_en || '',
+          resumes_description_en: englishContent(settsData.resumes_description, settsData.resumes_description_en) || '',
           about_me_text: settsData.about_me_text || '',
-          about_me_text_en: settsData.about_me_text_en || '',
+          about_me_text_en: englishContent(settsData.about_me_text, settsData.about_me_text_en) || '',
           linkedin_url: settsData.linkedin_url || '',
           github_url: settsData.github_url || '',
           whatsapp_url: settsData.whatsapp_url || '',
@@ -217,11 +280,14 @@ export default function Admin() {
       }
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
+      setLoadError('Não foi possível carregar o conteúdo do painel. Tente novamente.')
+    } finally {
+      setLoading(false)
     }
   }
 
   // Settings Handlers
-  async function handleSaveSettings() {
+  async function saveSettings() {
     setSettingsMessage('Salvando...')
     try {
       await updateSettings(token!, settings)
@@ -233,7 +299,7 @@ export default function Admin() {
   }
 
   // Resumes Handlers
-  async function handleUploadResume(e: React.FormEvent) {
+  async function uploadResume(e: React.FormEvent) {
     e.preventDefault()
     if (!resumePtName || !resumePtFile || !resumeEnName || !resumeEnFile) {
       setResumeMessage('Preencha e selecione os currículos nos dois idiomas.')
@@ -273,7 +339,7 @@ export default function Admin() {
     }
   }
 
-  async function handleSaveEditedResume(id: number) {
+  async function saveEditedResume(id: number) {
     if (!resumeName) return
     setResumeMessage('Salvando alterações...')
     const res = await editResume(token!, id, resumeName, resumeDescription, resumeLanguage)
@@ -289,7 +355,7 @@ export default function Admin() {
     }
   }
 
-  async function handleUploadCounterpart(e: React.FormEvent, originalResume: Resume) {
+  async function uploadCounterpart(e: React.FormEvent, originalResume: Resume) {
     e.preventDefault()
     if (!counterpartName || !counterpartFile) {
       setResumeMessage('Informe o nome e selecione o PDF da versão ausente.')
@@ -337,7 +403,7 @@ export default function Admin() {
     setCounterpartFile(null)
   }
 
-  async function handleLinkExistingCounterpart(originalResume: Resume, missingLanguage: 'pt-BR' | 'en') {
+  async function linkExistingCounterpart(originalResume: Resume, missingLanguage: 'pt-BR' | 'en') {
     const selectedId = Number(selectedLegacyCounterparts[originalResume.id])
     if (!Number.isInteger(selectedId)) {
       setResumeMessage('Selecione um currículo existente para vincular.')
@@ -388,14 +454,14 @@ export default function Admin() {
     setReplacementFile(null)
   }
 
-  async function handleReplaceResumeFile(e: React.FormEvent, resume: Resume) {
+  async function replaceFile(e: React.FormEvent, resume: Resume) {
     e.preventDefault()
     if (!replacementFile) {
       setResumeMessage('Selecione o novo arquivo PDF.')
       return
     }
 
-    setResumeMessage(`Substituindo o PDF de ${resume.name}...`)
+    setResumeMessage(`Substituindo o PDF de ${isEnglish ? englishContent(resume.name) || resume.name : resume.name}...`)
     try {
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
@@ -417,13 +483,13 @@ export default function Admin() {
     }
   }
 
-  async function handleDeleteResumePair(pairId: number | string) {
-    if (!confirm('Remover as duas versões deste currículo?')) return
+  async function deleteResumePair(pairId: number | string) {
+    if (!confirm(t("Remover as duas versões deste currículo?"))) return
     await removeResumePair(token!, pairId)
     loadData()
   }
 
-  async function handleMoveResumePair(pairId: number | string, direction: -1 | 1) {
+  async function moveResumePair(pairId: number | string, direction: -1 | 1) {
     const currentPairs = getResumePairs(resumes)
     const index = currentPairs.findIndex(pair => String(pair.pairId) === String(pairId))
     const target = index + direction
@@ -436,7 +502,7 @@ export default function Admin() {
   }
 
   // Skills Handlers
-  async function handleSaveSkill(e: React.FormEvent) {
+  async function saveSkill(e: React.FormEvent) {
     e.preventDefault()
     if (!skillForm.name || !skillForm.name_en || !skillForm.category || !skillForm.category_en) {
       setSkillsMessage('Preencha nome e categoria nos dois idiomas.')
@@ -460,8 +526,8 @@ export default function Admin() {
     }
   }
 
-  async function handleDeleteSkill(id: number) {
-    if (!confirm('Deseja excluir esta habilidade?')) return
+  async function deleteSkill(id: number) {
+    if (!confirm(t("Deseja excluir esta habilidade?"))) return
     try {
       await removeSkill(token!, id)
       loadData()
@@ -476,7 +542,7 @@ export default function Admin() {
   }
 
   // Experiences Handlers
-  async function handleSaveExperience(e: React.FormEvent) {
+  async function saveExperience(e: React.FormEvent) {
     e.preventDefault()
     if (!experienceForm.company || !experienceForm.company_en || !experienceForm.role || !experienceForm.role_en || !experienceForm.period || !experienceForm.period_en) {
       setExpMessage('Preencha empresa, cargo e período nos dois idiomas.')
@@ -500,8 +566,8 @@ export default function Admin() {
     }
   }
 
-  async function handleDeleteExperience(id: number) {
-    if (!confirm('Deseja excluir esta experiência?')) return
+  async function deleteExperience(id: number) {
+    if (!confirm(t("Deseja excluir esta experiência?"))) return
     try {
       await removeExperience(token!, id)
       loadData()
@@ -528,18 +594,24 @@ export default function Admin() {
   }
 
   // Login Handlers
-  async function handleLogin(e: React.FormEvent) {
+  async function signIn(e: React.FormEvent) {
     e.preventDefault()
-    const data = await loginApi(email, password)
-    if (data.token) {
-      login(data.token)
-      setLoginError('')
-    } else {
-      setLoginError('E-mail ou senha incorretos')
+    setSuccessMessage('')
+    try {
+      const data = await loginApi(email, password)
+      if (data.token) {
+        login(data.token)
+        setLoginError('')
+      } else {
+        setLoginError('E-mail ou senha incorretos')
+      }
+    } catch (error) {
+      if (error instanceof ApiError && ['HTTP_401', 'AUTH_INVALID_CREDENTIALS'].includes(error.code)) setLoginError('E-mail ou senha incorretos')
+      else throw error
     }
   }
 
-  async function handleForgotPassword() {
+  async function recoverPassword() {
     if (!email) {
       setLoginError('Preencha o seu e-mail para recuperar a senha')
       return
@@ -556,7 +628,7 @@ export default function Admin() {
   }
 
   // Project Handlers
-  async function handleSaveProject() {
+  async function saveProject() {
     if (!form.title || !form.title_en) {
       setSuccessMessage('Preencha o título do projeto nos dois idiomas.')
       return
@@ -570,26 +642,26 @@ export default function Admin() {
       : `${API_URL}/api/projects`
     const method = editingProject ? 'PUT' : 'POST'
 
-    await fetch(url, {
+    await readResponse(await fetch(url, {
       method,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify(payload)
-    })
+    }))
     setShowForm(false)
     setEditingProject(null)
     setForm({ title: '', title_en: '', description: '', description_en: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' })
     loadData()
   }
 
-  async function handleDeleteProject(id: number) {
-    if (!confirm('Deletar projeto?')) return
-    await fetch(`${API_URL}/api/projects/${id}`, {
+  async function deleteProject(id: number) {
+    if (!confirm(t("Deletar projeto?"))) return
+    await readResponse(await fetch(`${API_URL}/api/projects/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
-    })
+    }))
     loadData()
   }
 
@@ -612,54 +684,63 @@ export default function Admin() {
   // Tela de login
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-        <div className="bg-gray-900 rounded-xl p-8 border border-gray-800 w-full max-w-sm">
-          <h1 className="text-2xl font-bold mb-6">Admin</h1>
+      <main id="main-content" lang={isEnglish ? 'en' : 'pt-BR'} className="admin-page auth-page">
+        <div className="auth-card">
+          <h1>{t("Acesso administrativo")}</h1>
+
+          <p className="auth-description">{t("Entre para gerenciar o conteúdo do seu portfólio.")}</p>
           {loginError && (
-            <div className="bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg px-4 py-3 mb-4 text-sm">
-              {loginError}
+            <div role="alert" className="admin-notice bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg px-4 py-3 mb-4 text-sm">
+              {t(loginError)}
             </div>
           )}
           {successMessage && (
-            <div className="bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-lg px-4 py-3 mb-4 text-sm">
-              {successMessage}
+            <div role="status" className="admin-notice bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-lg px-4 py-3 mb-4 text-sm">
+              {t(successMessage)}
             </div>
           )}
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <form onSubmit={handleLogin} className="flex flex-col gap-4" aria-busy={busy}>
+            <label htmlFor="admin-email">{t("E-mail")}</label>
             <input
+              id="admin-email"
               type="email"
               autoComplete="username"
               maxLength={254}
               required
-              placeholder="E-mail"
+              placeholder={t("E-mail")}
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
             />
+            <label htmlFor="admin-password">{t("Senha")}</label>
             <input
+              id="admin-password"
               type="password"
               autoComplete="current-password"
               maxLength={128}
               required
-              placeholder="Senha"
+              placeholder={t("Senha")}
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
             />
             <button
               type="submit"
+              disabled={busy}
               className="bg-blue-500 hover:bg-blue-600 py-3 rounded-lg font-medium transition"
             >
-              Entrar
+              {busy ? t("Aguarde…") : t("Entrar")}
             </button>
             <button
               type="button"
               onClick={handleForgotPassword}
+              disabled={busy}
               className="text-sm text-gray-400 hover:text-white transition"
             >
-              Esqueci a senha
+              {t("Esqueci a senha")}
             </button>
           </form>
+          <a className="auth-back" href="/">{t("Voltar ao portfólio")}</a>
         </div>
       </main>
     )
@@ -667,118 +748,142 @@ export default function Admin() {
 
   // Painel admin
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <section className="max-w-5xl mx-auto px-6 py-16">
+    <main id="main-content" lang={isEnglish ? 'en' : 'pt-BR'} className="admin-page">
+      <section className="admin-shell">
+
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Painel Admin</h1>
-          <button onClick={logout} className="text-sm text-gray-400 hover:text-white transition">
-            Sair
+        <div className="admin-header">
+          <div><h1>{t("Painel administrativo")}</h1>
+            <p>{t("Projetos, currículos e conteúdo do portfólio.")}</p></div>
+          <button onClick={logout} className="admin-secondary">
+            {t("Sair da conta")}
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-gray-800 pb-4 mb-8">
+        <nav className="admin-tabs" aria-label={t("Seções do painel")}>
           <button
             onClick={() => setActiveTab('projects')}
+            aria-pressed={activeTab === 'projects'}
+            aria-controls="admin-content"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'projects' ? 'bg-blue-500 text-white' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-805'}`}
           >
-            📁 Projetos
+            {t("Projetos")}
           </button>
           <button
             onClick={() => setActiveTab('resumes')}
+            aria-pressed={activeTab === 'resumes'}
+            aria-controls="admin-content"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'resumes' ? 'bg-blue-500 text-white' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-805'}`}
           >
-            📄 Currículos
+            {t("Currículos")}
           </button>
           <button
             onClick={() => setActiveTab('skills')}
+            aria-pressed={activeTab === 'skills'}
+            aria-controls="admin-content"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'skills' ? 'bg-blue-500 text-white' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-805'}`}
           >
-            ⚡ Habilidades
+            {t("Habilidades")}
           </button>
           <button
             onClick={() => setActiveTab('experiences')}
+            aria-pressed={activeTab === 'experiences'}
+            aria-controls="admin-content"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'experiences' ? 'bg-blue-500 text-white' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-805'}`}
           >
-            ⏳ Experiências
+            {t("Experiências")}
           </button>
           <button
             onClick={() => setActiveTab('settings')}
+            aria-pressed={activeTab === 'settings'}
+            aria-controls="admin-content"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'settings' ? 'bg-blue-500 text-white' : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-805'}`}
           >
-            ⚙️ Configurações
+            {t("Configurações")}
           </button>
-        </div>
+        </nav>
+
+        {loading && <p role="status" className="admin-loading">{t("Carregando conteúdo do painel...")}</p>}
+        {loadError && <div role="alert" className="admin-load-error"><p>{t(loadError)}</p><button onClick={() => loadData(true)}>{t("Tentar novamente")}</button></div>}
+        {busy && <p role="status">{t("Processando operação. Aguarde…")}</p>}
+        <fieldset disabled={busy} id="admin-content" className="admin-content" aria-busy={loading || busy}>
+        <legend className="sr-only">{t("Edição de conteúdo")}</legend>
+        {(projects.some(p => !p.title_en || (p.description && !p.description_en)) ||
+          experiences.some(e => !e.role_en || !e.period_en || (e.description && !e.description_en)) ||
+          skills.some(s => !s.name_en || !s.category_en) ||
+          ['availability_text', 'job_status_text', 'about_me_text', 'resumes_description'].some(key => settings[key as keyof typeof settings] && !settings[`${key}_en` as keyof typeof settings])) &&
+          <p role="status" className="admin-notice">{t("Há conteúdo sem versão em inglês. Confira os campos em inglês de Projetos, Experiências, Habilidades e Configurações. A versão pública sinaliza traduções pendentes, sem tradução automática.")}</p>}
 
         {/* Tab 1: PROJECTS */}
         {activeTab === 'projects' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Projetos do Portfólio</h2>
+            <div className="admin-section-header">
+              <div><h2>{t("Projetos do portfólio")}</h2><p>{t("Gerencie os projetos publicados e seus destaques.")}</p></div>
               <button
-                onClick={() => { setShowForm(!showForm); setEditingProject(null); setForm({ title: '', title_en: '', description: '', description_en: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' }) }}
+                onClick={() => { setSuccessMessage(''); setShowForm(!showForm); setEditingProject(null); setForm({ title: '', title_en: '', description: '', description_en: '', tech_stack: '', github_url: '', live_url: '', featured: false, status: 'concluido' }) }}
                 className="bg-blue-500 hover:bg-blue-600 px-5 py-2 rounded-lg text-sm font-medium transition"
               >
-                {showForm ? 'Fechar Formulário' : '+ Novo Projeto'}
+                {showForm ? t("Fechar formulário") : t("Novo projeto")}
               </button>
             </div>
 
             {showForm && (
               <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 mb-8">
                 <h3 className="text-lg font-semibold mb-4">
-                  {editingProject ? 'Editar projeto' : 'Cadastrar novo projeto'}
+                  {editingProject ? t("Editar projeto") : t("Cadastrar novo projeto")}
                 </h3>
+                <AdminNotice message={t(successMessage)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input placeholder="Título" value={form.title}
+                  <AdminField label={t("Título em português")}><input placeholder={t("Título")} value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
-                  <input placeholder="Title (English)" value={form.title_en}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" /></AdminField>
+                  <AdminField label={t("Título em inglês")}><input placeholder={t("Title (English)")} value={form.title_en}
                     onChange={e => setForm({ ...form, title_en: e.target.value })}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" required />
-                  <input placeholder="Tecnologias (ex: React, Node.js, MySQL)" value={form.tech_stack}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" required /></AdminField>
+                  <AdminField label={t("Tecnologias (separadas por vírgula)")}><input placeholder={t("Tecnologias (ex: React, Node.js, MySQL)")} value={form.tech_stack}
                     onChange={e => setForm({ ...form, tech_stack: e.target.value })}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
-                  <input placeholder="URL do GitHub" value={form.github_url}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" /></AdminField>
+                  <AdminField label={t("URL do GitHub")}><input placeholder={t("URL do GitHub")} value={form.github_url}
                     onChange={e => setForm({ ...form, github_url: e.target.value })}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
-                  <input placeholder="URL do projeto (live)" value={form.live_url}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" /></AdminField>
+                  <AdminField label={t("URL do projeto publicado")}><input placeholder={t("URL do projeto (live)")} value={form.live_url}
                     onChange={e => setForm({ ...form, live_url: e.target.value })}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" />
-                  <textarea placeholder="Descrição" value={form.description}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" /></AdminField>
+                  <AdminField label={t("Descrição em português")} className="md:col-span-2"><textarea placeholder={t("Descrição")} value={form.description}
                     onChange={e => setForm({ ...form, description: e.target.value })}
                     rows={3}
-                    className="md:col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none" />
-                  <textarea placeholder="Description (English)" value={form.description_en}
+                    className="md:col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none" /></AdminField>
+                  <AdminField label={t("Descrição em inglês")} className="md:col-span-2"><textarea placeholder={t("Description (English)")} value={form.description_en}
                     onChange={e => setForm({ ...form, description_en: e.target.value })}
                     rows={3}
-                    className="md:col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none" />
+                    className="md:col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none" /></AdminField>
                   <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
                     <input type="checkbox" checked={form.featured}
                       onChange={e => setForm({ ...form, featured: e.target.checked })}
                       className="accent-blue-500" />
-                    Projeto em destaque
+                    {t("Projeto em destaque")}
                   </label>
-                  <select
+                  <AdminField label={t("Status do projeto")}><select id="admin-control-1"
                     value={form.status}
                     onChange={e => setForm({ ...form, status: e.target.value })}
                     className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500 transition"
                   >
-                    <option value="concluido">✅ Concluído</option>
-                    <option value="em_andamento">🔧 Em andamento</option>
-                    <option value="pausado">⏸ Pausado</option>
-                  </select>
+                    <option value="concluido">{t("Concluído")}</option>
+                    <option value="em_andamento">{t("Em andamento")}</option>
+                    <option value="pausado">{t("Pausado")}</option>
+                  </select></AdminField>
                 </div>
                 
                 <div className="flex gap-3 mt-4">
                   <button onClick={handleSaveProject}
                     className="bg-blue-500 hover:bg-blue-600 px-5 py-2 rounded-lg text-sm font-medium transition">
-                    Salvar
+                    {t("Salvar")}
                   </button>
                   <button onClick={() => setShowForm(false)}
                     className="bg-gray-700 hover:bg-gray-600 px-5 py-2 rounded-lg text-sm font-medium transition">
-                    Cancelar
+                    {t("Cancelar")}
                   </button>
                 </div>
               </div>
@@ -786,35 +891,35 @@ export default function Admin() {
 
             <div className="flex flex-col gap-4">
               {projects.map(project => (
-                <div key={project.id} className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex items-start justify-between">
+                <div key={project.id} className="admin-record bg-gray-900 rounded-xl p-5 border border-gray-800 flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold">{project.title}</h3>
+                      <h3 className="font-semibold">{isEnglish ? project.title_en || project.title : project.title}</h3>
                       {project.featured && (
-                        <span className="text-xs bg-blue-500/20 text-teal-400 px-2 py-0.5 rounded-full">Destaque</span>
+                        <span className="text-xs bg-blue-500/20 text-teal-400 px-2 py-0.5 rounded-full">{t("Destaque")}</span>
                       )}
                     </div>
-                    <p className="text-gray-400 text-sm mb-2">{project.description}</p>
+                    <p className="text-gray-400 text-sm mb-2">{isEnglish ? project.description_en || project.description : project.description}</p>
                     <div className="flex flex-wrap gap-1">
                       {project.tech_stack?.map(tech => (
                         <span key={tech} className="bg-gray-800 text-gray-300 text-xs px-2 py-0.5 rounded-full">{tech}</span>
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4 shrink-0">
-                    <button onClick={() => handleEditProject(project)}
+                  <div className="admin-record-actions flex gap-2 ml-4 shrink-0">
+                    <button aria-label={`${isEnglish ? 'Edit project' : 'Editar projeto'} ${isEnglish ? project.title_en : project.title}`} onClick={() => { setSuccessMessage(''); handleEditProject(project) }}
                       className="text-sm text-gray-400 hover:text-white transition">
-                      Editar
+                      {t("Editar")}
                     </button>
-                    <button onClick={() => handleDeleteProject(project.id)}
+                    <button aria-label={`${isEnglish ? 'Delete project' : 'Excluir projeto'} ${isEnglish ? project.title_en : project.title}`} onClick={() => handleDeleteProject(project.id)}
                       className="text-sm text-red-400 hover:text-red-300 transition">
-                      Deletar
+                      {t("Excluir")}
                     </button>
                   </div>
                 </div>
               ))}
-              {projects.length === 0 && (
-                <p className="text-gray-500">Nenhum projeto cadastrado.</p>
+              {!loading && !loadError && projects.length === 0 && (
+                <p className="text-gray-500">{t("Nenhum projeto cadastrado.")}</p>
               )}
             </div>
           </div>
@@ -822,112 +927,115 @@ export default function Admin() {
 
         {/* Tab 2: RESUMES */}
         {activeTab === 'resumes' && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="admin-panel bg-gray-900 rounded-xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Gerenciar Currículos</h2>
-              {resumeMessage && <span className="text-sm text-teal-400">{resumeMessage}</span>}
+              <h2 className="text-lg font-semibold">{t("Currículos")}</h2>
+              <AdminNotice message={resumeMessage} />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-1">Texto explicativo da seção (Aparece na tela "Sobre")</label>
-              <textarea 
+              <label htmlFor="admin-control-2" className="block text-sm text-gray-400 mb-1">{t("Texto explicativo da seção (Aparece na tela \"Sobre\")")}</label>
+              <textarea id="admin-control-2"
                 value={settings.resumes_description || ''}
                 onChange={e => setSettings({ ...settings, resumes_description: e.target.value })}
-                placeholder="Ex: Abaixo estão as versões do meu currículo direcionadas para diferentes vagas..."
+                placeholder={t("Ex: Abaixo estão as versões do meu currículo direcionadas para diferentes vagas...")}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 transition resize-none h-24"
               />
-              <label className="block text-sm text-gray-400 mb-1 mt-4">Texto explicativo da seção em inglês</label>
-              <textarea
+              <label htmlFor="admin-control-3" className="block text-sm text-gray-400 mb-1 mt-4">{t("Texto explicativo da seção em inglês")}</label>
+              <textarea id="admin-control-3"
                 value={settings.resumes_description_en || ''}
                 onChange={e => setSettings({ ...settings, resumes_description_en: e.target.value })}
-                placeholder="Example: Select the résumé that best matches the position..."
+                placeholder={t("Example: Select the résumé that best matches the position...")}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 transition resize-none h-24"
               />
               <button 
                 onClick={handleSaveSettings}
                 className="mt-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
               >
-                Salvar Texto
+                {t("Salvar Texto")}
               </button>
             </div>
             
             {editingResumeId === null && (
               <form onSubmit={handleUploadResume} className="mb-8">
+                <h3 className="admin-subheading">{t("Cadastrar um par de currículos")}</h3>
+                <p className="admin-help">{t("Envie as versões em português e inglês juntas. Cada arquivo deve ser PDF e ter até 5 MB.")}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex flex-col gap-3">
-                    <h3 className="font-semibold text-teal-400">Português (Brasil)</h3>
-                    <input type="text" placeholder="Nome do currículo" value={resumePtName}
+                    <h3 className="font-semibold text-teal-400">{t("Português (Brasil)")}</h3>
+                    <AdminField label={t("Nome do currículo em português")}><input type="text" placeholder={t("Nome do currículo")} value={resumePtName}
                       onChange={e => setResumePtName(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" required />
-                    <input type="text" placeholder="Descrição" value={resumePtDescription}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" required /></AdminField>
+                    <AdminField label={t("Descrição em português")}><input type="text" placeholder={t("Descrição")} value={resumePtDescription}
                       onChange={e => setResumePtDescription(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" />
-                    <input type="file" accept=".pdf" onChange={e => setResumePtFile(e.target.files?.[0] || null)}
-                      className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white" required />
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" /></AdminField>
+                    <AdminField label={t("PDF em português (até 5 MB)")}><input type="file" accept=".pdf" onChange={e => setResumePtFile(e.target.files?.[0] || null)}
+                      className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white" required /></AdminField>
                   </div>
 
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex flex-col gap-3">
-                    <h3 className="font-semibold text-blue-400">English</h3>
-                    <input type="text" placeholder="Résumé name" value={resumeEnName}
+                    <h3 className="font-semibold text-blue-400">{t("English")}</h3>
+                    <AdminField label={t("Nome do currículo em inglês")}><input type="text" placeholder={t("Résumé name")} value={resumeEnName}
                       onChange={e => setResumeEnName(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" required />
-                    <input type="text" placeholder="Description" value={resumeEnDescription}
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" required /></AdminField>
+                    <AdminField label={t("Descrição em inglês")}><input type="text" placeholder={t("Description")} value={resumeEnDescription}
                       onChange={e => setResumeEnDescription(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" />
-                    <input type="file" accept=".pdf" onChange={e => setResumeEnFile(e.target.files?.[0] || null)}
-                      className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white" required />
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" /></AdminField>
+                    <AdminField label={t("PDF em inglês (até 5 MB)")}><input type="file" accept=".pdf" onChange={e => setResumeEnFile(e.target.files?.[0] || null)}
+                      className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white" required /></AdminField>
                   </div>
                 </div>
                 <button type="submit" className="mt-4 bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-lg text-sm font-medium transition">
-                  Enviar par de currículos
+                  {t("Enviar par de currículos")}
                 </button>
               </form>
             )}
 
             <div className="flex flex-col gap-4">
               {getResumePairs(resumes).map((pair, index, pairs) => (
-                <div key={pair.pairId} className="bg-gray-800/40 border border-gray-700/50 p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-gray-300">Posição {index + 1}</span>
+                <div key={pair.pairId} className="admin-resume-pair bg-gray-800/40 border border-gray-700/50 p-4 rounded-xl">
+                  <div className="admin-pair-header flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium text-gray-300">{t("Posição")} {index + 1}</span>
                     <div className="flex gap-3 text-sm">
                       <button onClick={() => handleMoveResumePair(pair.pairId, -1)} disabled={index === 0}
-                        className="text-gray-300 disabled:opacity-30">↑ Subir</button>
+                        className="text-gray-300 disabled:opacity-30">{t("↑ Subir")}</button>
                       <button onClick={() => handleMoveResumePair(pair.pairId, 1)} disabled={index === pairs.length - 1}
-                        className="text-gray-300 disabled:opacity-30">↓ Descer</button>
-                      <button onClick={() => handleDeleteResumePair(pair.pairId)} className="text-red-400">Remover par</button>
+                        className="text-gray-300 disabled:opacity-30">{t("↓ Descer")}</button>
+                      <button onClick={() => handleDeleteResumePair(pair.pairId)} className="text-red-400">{t("Remover par")}</button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[pair.portuguese, pair.english].map((resume, resumeIndex) => resume ? (
-                      <div key={resume.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <div key={resume.id} className="admin-resume-card bg-gray-800 p-4 rounded-lg border border-gray-700">
                         {editingResumeId === resume.id ? (
                           <div className="flex flex-col gap-2">
-                            <input value={resumeName} onChange={e => setResumeName(e.target.value)}
-                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" />
-                            <input value={resumeDescription} onChange={e => setResumeDescription(e.target.value)}
-                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" />
+                            <AdminField label={t("Nome do currículo")}><input value={resumeName} onChange={e => setResumeName(e.target.value)}
+                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" /></AdminField>
+                            <AdminField label={t("Descrição do currículo")}><input value={resumeDescription} onChange={e => setResumeDescription(e.target.value)}
+                              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" /></AdminField>
                             <div className="flex gap-3 text-sm">
-                              <button onClick={() => handleSaveEditedResume(resume.id)} className="text-teal-400">Salvar</button>
-                              <button onClick={cancelEditResume} className="text-gray-400">Cancelar</button>
+                              <button onClick={() => handleSaveEditedResume(resume.id)} className="text-teal-400">{t("Salvar")}</button>
+                              <button onClick={cancelEditResume} className="text-gray-400">{t("Cancelar")}</button>
                             </div>
                           </div>
                         ) : (
                           <>
-                            <div className="text-xs text-teal-400 mb-1">{resumeIndex === 0 ? 'Português (Brasil)' : 'English'}</div>
-                            <div className="font-medium">{resume.name}</div>
-                            {resume.description && <div className="text-sm text-gray-400 mt-1">{resume.description}</div>}
+                            <div className="text-xs text-teal-400 mb-1">{resumeIndex === 0 ? t("Português (Brasil)") : t("English")}</div>
+                            <div className="font-medium">{isEnglish ? englishContent(resume.name) || resume.name : resume.name}</div>
+                            {resume.description && <div className="text-sm text-gray-400 mt-1">{isEnglish ? englishContent(resume.description) || resume.description : resume.description}</div>}
                             <div className="flex items-center justify-between mt-3 gap-3">
-                              <a href={resume.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">Abrir PDF</a>
+                              <a href={resume.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">{t("Abrir PDF")}</a>
                               <div className="flex items-center gap-3">
-                                <button onClick={() => startReplaceResume(resume.id)} className="text-sm text-teal-400">Substituir PDF</button>
-                                <button onClick={() => startEditResume(resume)} className="text-sm text-blue-400">Editar</button>
+                                <button onClick={() => startReplaceResume(resume.id)} className="text-sm text-teal-400">{t("Substituir PDF")}</button>
+                                <button onClick={() => startEditResume(resume)} className="text-sm text-blue-400">{t("Editar")}</button>
                               </div>
                             </div>
                             {replacingResumeId === resume.id && (
                               <form onSubmit={e => handleReplaceResumeFile(e, resume)} className="mt-3 border-t border-gray-700 pt-3 flex flex-col gap-2">
-                                <label className="text-xs text-gray-400">Novo arquivo PDF</label>
+                                <label htmlFor={`replacement-${resume.id}`} className="text-xs text-gray-400">{t("Novo arquivo PDF")}</label>
                                 <input
+                                  id={`replacement-${resume.id}`}
                                   type="file"
                                   accept="application/pdf,.pdf"
                                   onChange={e => setReplacementFile(e.target.files?.[0] || null)}
@@ -935,8 +1043,8 @@ export default function Admin() {
                                   required
                                 />
                                 <div className="flex gap-3 text-sm">
-                                  <button type="submit" className="text-teal-400">Confirmar substituição</button>
-                                  <button type="button" onClick={cancelReplaceResume} className="text-gray-400">Cancelar</button>
+                                  <button type="submit" className="text-teal-400">{t("Confirmar substituição")}</button>
+                                  <button type="button" onClick={cancelReplaceResume} className="text-gray-400">{t("Cancelar")}</button>
                                 </div>
                               </form>
                             )}
@@ -946,7 +1054,7 @@ export default function Admin() {
                     ) : (
                       <div key={resumeIndex} className="border border-dashed border-yellow-600/50 rounded-lg p-4 text-sm">
                         <div className="text-yellow-400/80 mb-3">
-                          Versão {resumeIndex === 0 ? 'em português' : 'em inglês'} ausente — registro legado.
+                          {t("Versão")} {resumeIndex === 0 ? t("em português") : t("em inglês")} {t("ausente — registro legado.")}
                         </div>
                         {(() => {
                           const originalResume = (pair.portuguese || pair.english)!
@@ -954,13 +1062,14 @@ export default function Admin() {
                           const existingCandidates = getUnpairedCandidates(resumes, missingLanguage, pair.pairId)
                           return existingCandidates.length > 0 ? (
                             <div className="mb-4 flex flex-col gap-2">
-                              <label className="text-xs text-gray-400">Vincular um PDF já cadastrado</label>
+                              <label htmlFor={`counterpart-link-${originalResume.id}`} className="text-xs text-gray-400">{t("Vincular um PDF já cadastrado")}</label>
                               <select
+                                id={`counterpart-link-${originalResume.id}`}
                                 value={selectedLegacyCounterparts[originalResume.id] || ''}
                                 onChange={e => setSelectedLegacyCounterparts(current => ({ ...current, [originalResume.id]: e.target.value }))}
                                 className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
                               >
-                                <option value="">Selecione...</option>
+                                <option value="">{t("Selecione...")}</option>
                                 {existingCandidates.map(candidate => (
                                   <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
                                 ))}
@@ -970,36 +1079,36 @@ export default function Admin() {
                                 onClick={() => handleLinkExistingCounterpart(originalResume, missingLanguage)}
                                 className="self-start text-blue-400 hover:text-blue-300"
                               >
-                                Vincular currículo existente
+                                {t("Vincular currículo existente")}
                               </button>
                             </div>
                           ) : null
                         })()}
                         {completingResumeId === (pair.portuguese || pair.english)?.id ? (
                           <form onSubmit={e => handleUploadCounterpart(e, (pair.portuguese || pair.english)!)} className="flex flex-col gap-2">
-                            <input
+                            <AdminField label={t("Nome da versão ausente")}><input
                               value={counterpartName}
                               onChange={e => setCounterpartName(e.target.value)}
-                              placeholder={resumeIndex === 0 ? 'Nome do currículo' : 'Résumé name'}
+                              placeholder={t(resumeIndex === 0 ? 'Nome do currículo' : 'Résumé name')}
                               className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
                               required
-                            />
-                            <input
+                            /></AdminField>
+                            <AdminField label={t("Descrição da versão ausente")}><input
                               value={counterpartDescription}
                               onChange={e => setCounterpartDescription(e.target.value)}
-                              placeholder={resumeIndex === 0 ? 'Descrição' : 'Description'}
+                              placeholder={t(resumeIndex === 0 ? 'Descrição' : 'Description')}
                               className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
-                            />
-                            <input
+                            /></AdminField>
+                            <AdminField label={t("PDF da versão ausente (até 5 MB)")}><input
                               type="file"
                               accept=".pdf"
                               onChange={e => setCounterpartFile(e.target.files?.[0] || null)}
                               className="text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white"
                               required
-                            />
+                            /></AdminField>
                             <div className="flex gap-3 mt-1">
-                              <button type="submit" className="text-teal-400">Adicionar versão</button>
-                              <button type="button" onClick={cancelCompleteResume} className="text-gray-400">Cancelar</button>
+                              <button type="submit" className="text-teal-400">{t("Adicionar versão")}</button>
+                              <button type="button" onClick={cancelCompleteResume} className="text-gray-400">{t("Cancelar")}</button>
                             </div>
                           </form>
                         ) : (
@@ -1007,7 +1116,7 @@ export default function Admin() {
                             onClick={() => startCompleteResume((pair.portuguese || pair.english)!)}
                             className="text-teal-400 hover:text-teal-300"
                           >
-                            Adicionar versão {resumeIndex === 0 ? 'em português' : 'em inglês'}
+                            {t("Adicionar versão")} {resumeIndex === 0 ? t("em português") : t("em inglês")}
                           </button>
                         )}
                       </div>
@@ -1015,7 +1124,7 @@ export default function Admin() {
                   </div>
                 </div>
               ))}
-              {resumes.length === 0 && <p className="text-sm text-gray-500">Nenhum currículo cadastrado.</p>}
+              {resumes.length === 0 && <p className="text-sm text-gray-500">{t("Nenhum currículo cadastrado.")}</p>}
             </div>
           </div>
         )}
@@ -1023,15 +1132,15 @@ export default function Admin() {
         {/* Tab 3: SKILLS */}
         {activeTab === 'skills' && (
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <h2 className="text-xl font-bold mb-4">Gerenciar Habilidades (Skills)</h2>
-            {skillsMessage && <div className="bg-blue-500/10 text-teal-400 border border-teal-500/20 px-4 py-2 rounded-lg text-sm mb-4">{skillsMessage}</div>}
+            <h2 className="text-xl font-bold mb-4">{t("Habilidades")}</h2>
+            <AdminNotice message={skillsMessage} />
             
-            <form onSubmit={handleSaveSkill} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8 bg-gray-800/30 p-4 rounded-lg border border-gray-800">
+            <form onSubmit={handleSaveSkill} className="admin-skill-form grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8 bg-gray-800/30 p-4 rounded-lg border border-gray-800">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Nome da Tecnologia</label>
-                <input 
+                <label htmlFor="admin-control-4" className="block text-xs text-gray-400 mb-1">{t("Nome da Tecnologia")}</label>
+                <input id="admin-control-4"
                   type="text" 
-                  placeholder="Ex: React, Node.js"
+                  placeholder={t("Ex: React, Node.js")}
                   value={skillForm.name}
                   onChange={e => setSkillForm({ ...skillForm, name: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
@@ -1039,10 +1148,10 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Nome em inglês</label>
-                <input
+                <label htmlFor="admin-control-5" className="block text-xs text-gray-400 mb-1">{t("Nome em inglês")}</label>
+                <input id="admin-control-5"
                   type="text"
-                  placeholder="Example: Databases"
+                  placeholder={t("Example: Databases")}
                   value={skillForm.name_en}
                   onChange={e => setSkillForm({ ...skillForm, name_en: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
@@ -1050,8 +1159,8 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Categoria</label>
-                <select
+                <label htmlFor="admin-control-6" className="block text-xs text-gray-400 mb-1">{t("Categoria")}</label>
+                <select id="admin-control-6"
                   value={skillForm.category}
                   onChange={e => {
                     const translations: Record<string, string> = { Frontend: 'Frontend', Backend: 'Backend', 'Banco de dados': 'Databases', Ferramentas: 'Tools', Infraestrutura: 'Infrastructure' }
@@ -1059,16 +1168,16 @@ export default function Admin() {
                   }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
-                  <option value="Frontend">Frontend</option>
-                  <option value="Backend">Backend</option>
-                  <option value="Banco de dados">Banco de Dados</option>
-                  <option value="Ferramentas">Ferramentas</option>
-                  <option value="Infraestrutura">Infraestrutura</option>
+                  <option value="Frontend">{t("Frontend")}</option>
+                  <option value="Backend">{t("Backend")}</option>
+                  <option value="Banco de dados">{t("Banco de Dados")}</option>
+                  <option value="Ferramentas">{t("Ferramentas")}</option>
+                  <option value="Infraestrutura">{t("Infraestrutura")}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Categoria em inglês</label>
-                <input
+                <label htmlFor="admin-control-7" className="block text-xs text-gray-400 mb-1">{t("Categoria em inglês")}</label>
+                <input id="admin-control-7"
                   type="text"
                   value={skillForm.category_en}
                   onChange={e => setSkillForm({ ...skillForm, category_en: e.target.value })}
@@ -1077,30 +1186,32 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Nível de Proficiência (SEO/ATS)</label>
-                <select
+                <label htmlFor="admin-control-8" className="block text-xs text-gray-400 mb-1">{t("Nível de proficiência")}</label>
+                <select id="admin-control-8"
                   value={skillForm.level}
                   onChange={e => setSkillForm({ ...skillForm, level: parseInt(e.target.value) || 90 })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition h-10"
                 >
-                  <option value={90}>Avançado / Especialista</option>
-                  <option value={70}>Intermediário</option>
-                  <option value={50}>Iniciante / Básico</option>
+                  <option value={90}>{t("Avançado / Especialista")}</option>
+                  <option value={70}>{t("Intermediário")}</option>
+                  <option value={50}>{t("Iniciante / Básico")}</option>
                 </select>
               </div>
               <div className="flex gap-3 items-end md:col-span-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Cor Hex & Preview</label>
-                  <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 h-10">
+                  <label htmlFor="skill-color" className="block text-xs text-gray-400 mb-1">{t("Cor da habilidade")}</label>
+                  <div className="admin-color-control flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 h-10">
                     <input 
+                      id="skill-color"
                       type="color" 
                       value={skillForm.color || '#00f0ff'} 
                       onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
                       className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
                     />
                     <input 
+                      aria-label={t("Código hexadecimal da cor")}
                       type="text" 
-                      placeholder="#00f0ff"
+                      placeholder={t("#00f0ff")}
                       value={skillForm.color}
                       onChange={e => setSkillForm({ ...skillForm, color: e.target.value })}
                       className="bg-transparent text-white focus:outline-none text-sm w-20"
@@ -1117,32 +1228,32 @@ export default function Admin() {
                   type="submit"
                   className="bg-teal-500 hover:bg-teal-600 px-5 py-2.5 rounded-lg text-sm font-semibold transition shrink-0 h-10"
                 >
-                  {editingSkill ? 'Salvar' : 'Adicionar'}
+                  {editingSkill ? t("Salvar") : t("Adicionar")}
                 </button>
               </div>
             </form>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="admin-skill-groups grid grid-cols-1 md:grid-cols-2 gap-4">
               {['Frontend', 'Backend', 'Banco de dados', 'Ferramentas', 'Infraestrutura'].map(cat => {
                 const filtered = skills.filter(s => s.category === cat)
                 return (
-                  <div key={cat} className="bg-gray-800/40 border border-gray-800 p-4 rounded-xl">
-                    <h3 className="text-sm font-bold text-teal-400 mb-3">{cat}</h3>
+                  <div key={cat} className="admin-skill-group bg-gray-800/40 border border-gray-800 p-4 rounded-xl">
+                    <h3 className="text-sm font-bold text-teal-400 mb-3">{t(cat)}</h3>
                     <div className="flex flex-col gap-2">
                       {filtered.map(s => (
-                        <div key={s.id} className="flex justify-between items-center bg-gray-800 p-2.5 rounded-lg border border-gray-700/50">
+                        <div key={s.id} className="admin-skill-row flex justify-between items-center bg-gray-800 p-2.5 rounded-lg border border-gray-700/50">
                           <span className="text-sm font-medium flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-                            {s.name} <span className="text-xs text-gray-500">({s.level >= 90 ? 'Avançado' : s.level >= 70 ? 'Intermediário' : 'Iniciante'})</span>
+                            {isEnglish ? s.name_en || s.name : s.name} <span className="text-xs text-gray-500">{t("(")}{s.level >= 90 ? t("Avançado") : s.level >= 70 ? t("Intermediário") : t("Iniciante")}{t(")")}</span>
                           </span>
                           <div className="flex gap-2">
-                            <button onClick={() => startEditSkill(s)} className="text-xs text-blue-400 hover:underline">Editar</button>
-                            <button onClick={() => handleDeleteSkill(s.id)} className="text-xs text-red-400 hover:underline">Excluir</button>
+                            <button onClick={() => startEditSkill(s)} className="text-xs text-blue-400 hover:underline">{t("Editar")}</button>
+                            <button onClick={() => handleDeleteSkill(s.id)} className="text-xs text-red-400 hover:underline">{t("Excluir")}</button>
                           </div>
                         </div>
                       ))}
                       {filtered.length === 0 && (
-                        <span className="text-xs text-gray-500 italic">Sem habilidades cadastradas</span>
+                        <span className="text-xs text-gray-500 italic">{t("Sem habilidades cadastradas")}</span>
                       )}
                     </div>
                   </div>
@@ -1155,18 +1266,18 @@ export default function Admin() {
         {/* Tab 4: EXPERIENCES */}
         {activeTab === 'experiences' && (
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <h2 className="text-xl font-bold mb-4">Gerenciar Experiência & Educação</h2>
-            {expMessage && <div className="bg-blue-500/10 text-teal-400 border border-teal-500/20 px-4 py-2 rounded-lg text-sm mb-4">{expMessage}</div>}
+            <h2 className="text-xl font-bold mb-4">{t("Experiência e formação")}</h2>
+            <AdminNotice message={expMessage} />
 
             <form onSubmit={handleSaveExperience} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 bg-gray-800/30 p-5 rounded-lg border border-gray-800">
-              <h3 className="md:col-span-2 text-sm font-semibold border-b border-gray-700 pb-1 mb-2">
-                {editingExperience ? '📝 Editar Item' : '➕ Adicionar Nova Experiência/Estudo'}
+                <h3 className="md:col-span-2 text-sm font-semibold border-b border-gray-700 pb-1 mb-2">
+                {editingExperience ? t("Editar experiência ou formação") : t("Adicionar experiência ou formação")}
               </h3>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Empresa / Instituição</label>
-                <input 
+                <label htmlFor="admin-control-9" className="block text-xs text-gray-400 mb-1">{t("Empresa / Instituição")}</label>
+                <input id="admin-control-9"
                   type="text" 
-                  placeholder="Ex: MTEC Energia, Faculdade UDF"
+                  placeholder={t("Ex: MTEC Energia, Faculdade UDF")}
                   value={experienceForm.company}
                   onChange={e => setExperienceForm({ ...experienceForm, company: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
@@ -1174,8 +1285,8 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Company / Institution (English)</label>
-                <input
+                <label htmlFor="admin-control-10" className="block text-xs text-gray-400 mb-1">{t("Company / Institution (English)")}</label>
+                <input id="admin-control-10"
                   type="text"
                   value={experienceForm.company_en}
                   onChange={e => setExperienceForm({ ...experienceForm, company_en: e.target.value })}
@@ -1184,10 +1295,10 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Cargo / Curso</label>
-                <input 
+                <label htmlFor="admin-control-11" className="block text-xs text-gray-400 mb-1">{t("Cargo / Curso")}</label>
+                <input id="admin-control-11"
                   type="text" 
-                  placeholder="Ex: Estagiário de TI, Bacharelado"
+                  placeholder={t("Ex: Estagiário de TI, Bacharelado")}
                   value={experienceForm.role}
                   onChange={e => setExperienceForm({ ...experienceForm, role: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
@@ -1195,8 +1306,8 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Role / Course (English)</label>
-                <input
+                <label htmlFor="admin-control-12" className="block text-xs text-gray-400 mb-1">{t("Role / Course (English)")}</label>
+                <input id="admin-control-12"
                   type="text"
                   value={experienceForm.role_en}
                   onChange={e => setExperienceForm({ ...experienceForm, role_en: e.target.value })}
@@ -1205,10 +1316,10 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Período / Ano</label>
-                <input 
+                <label htmlFor="admin-control-13" className="block text-xs text-gray-400 mb-1">{t("Período / Ano")}</label>
+                <input id="admin-control-13"
                   type="text" 
-                  placeholder="Ex: 2025 - Atualmente, Conclusão: 12/2026"
+                  placeholder={t("Ex: 2025 - Atualmente, Conclusão: 12/2026")}
                   value={experienceForm.period}
                   onChange={e => setExperienceForm({ ...experienceForm, period: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
@@ -1216,8 +1327,8 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Period / Year (English)</label>
-                <input
+                <label htmlFor="admin-control-14" className="block text-xs text-gray-400 mb-1">{t("Period / Year (English)")}</label>
+                <input id="admin-control-14"
                   type="text"
                   value={experienceForm.period_en}
                   onChange={e => setExperienceForm({ ...experienceForm, period_en: e.target.value })}
@@ -1226,30 +1337,30 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Tipo de Registro</label>
-                <select
+                <label htmlFor="admin-control-15" className="block text-xs text-gray-400 mb-1">{t("Tipo de Registro")}</label>
+                <select id="admin-control-15"
                   value={experienceForm.type}
                   onChange={e => setExperienceForm({ ...experienceForm, type: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 >
-                  <option value="work">💼 Experiência Profissional</option>
-                  <option value="education">🎓 Educação / Acadêmico</option>
+                  <option value="work">{t("Experiência profissional")}</option>
+                  <option value="education">{t("Educação / Acadêmico")}</option>
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs text-gray-400 mb-1">Tecnologias Utilizadas (Separadas por vírgula)</label>
-                <input 
+                <label htmlFor="admin-control-16" className="block text-xs text-gray-400 mb-1">{t("Tecnologias Utilizadas (Separadas por vírgula)")}</label>
+                <input id="admin-control-16"
                   type="text" 
-                  placeholder="Ex: React, Node.js, Cloudflare, Ubuntu Server"
+                  placeholder={t("Ex: React, Node.js, Cloudflare, Ubuntu Server")}
                   value={experienceForm.techs}
                   onChange={e => setExperienceForm({ ...experienceForm, techs: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm transition"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs text-gray-400 mb-1">Descrição / Atividades</label>
-                <textarea 
-                  placeholder="Descreva suas funções ou detalhes do curso..."
+                <label htmlFor="admin-control-17" className="block text-xs text-gray-400 mb-1">{t("Descrição / Atividades")}</label>
+                <textarea id="admin-control-17"
+                  placeholder={t("Descreva suas funções ou detalhes do curso...")}
                   value={experienceForm.description}
                   onChange={e => setExperienceForm({ ...experienceForm, description: e.target.value })}
                   rows={3}
@@ -1257,8 +1368,8 @@ export default function Admin() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs text-gray-400 mb-1">Description / Activities (English)</label>
-                <textarea
+                <label htmlFor="admin-control-18" className="block text-xs text-gray-400 mb-1">{t("Description / Activities (English)")}</label>
+                <textarea id="admin-control-18"
                   value={experienceForm.description_en}
                   onChange={e => setExperienceForm({ ...experienceForm, description_en: e.target.value })}
                   rows={3}
@@ -1266,8 +1377,8 @@ export default function Admin() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Ordem de Exibição (Index)</label>
-                <input 
+                <label htmlFor="admin-control-19" className="block text-xs text-gray-400 mb-1">{t("Ordem de Exibição (Index)")}</label>
+                <input id="admin-control-19"
                   type="number" 
                   value={experienceForm.order_index}
                   onChange={e => setExperienceForm({ ...experienceForm, order_index: parseInt(e.target.value) || 0 })}
@@ -1279,48 +1390,50 @@ export default function Admin() {
                   type="submit"
                   className="bg-teal-500 hover:bg-teal-600 px-6 py-2.5 rounded-lg text-sm font-semibold transition"
                 >
-                  {editingExperience ? 'Salvar Alterações' : 'Cadastrar Item'}
+                  {editingExperience ? t("Salvar Alterações") : t("Cadastrar Item")}
                 </button>
               </div>
             </form>
 
             <div className="flex flex-col gap-6">
               <div>
-                <h3 className="text-base font-bold text-gray-300 border-b border-gray-800 pb-2 mb-3">💼 Experiência Profissional</h3>
+                <h3 className="text-base font-bold text-gray-300 border-b border-gray-800 pb-2 mb-3">{t("Experiência profissional")}</h3>
                 <div className="flex flex-col gap-3">
                   {experiences.filter(e => e.type === 'work').map(e => (
-                    <div key={e.id} className="flex justify-between items-start bg-gray-800/30 border border-gray-800 p-4 rounded-xl">
+                    <div key={e.id} className="admin-experience-record flex justify-between items-start bg-gray-800/30 border border-gray-800 p-4 rounded-xl">
                       <div>
-                        <h4 className="font-semibold text-gray-200">{e.role} em <span className="text-teal-400">{e.company}</span></h4>
-                        <p className="text-xs text-gray-500 mb-2">{e.period} (Ordem: {e.order_index})</p>
-                        <p className="text-sm text-gray-400 mb-2">{e.description}</p>
-                        <span className="text-xs text-gray-500">Techs: {e.techs || 'Nenhuma'}</span>
+                        <h4 className="font-semibold text-gray-200">{isEnglish ? e.role_en || e.role : e.role} {t("em")} <span className="text-teal-400">{isEnglish ? e.company_en || e.company : e.company}</span></h4>
+                        <p className="text-xs text-gray-500 mb-2">{isEnglish ? e.period_en || e.period : e.period} {t("(Ordem:")} {e.order_index}{t(")")}</p>
+                        <p className="text-sm text-gray-400 mb-2">{isEnglish ? e.description_en || e.description : e.description}</p>
+                        <span className="text-xs text-gray-500">{t("Techs:")} {e.techs || t('Nenhuma')}</span>
                       </div>
                       <div className="flex gap-3 shrink-0 ml-4">
-                        <button onClick={() => startEditExperience(e)} className="text-sm text-blue-400 hover:underline">Editar</button>
-                        <button onClick={() => handleDeleteExperience(e.id!)} className="text-sm text-red-400 hover:underline">Excluir</button>
+                        <button onClick={() => startEditExperience(e)} className="text-sm text-blue-400 hover:underline">{t("Editar")}</button>
+                        <button onClick={() => handleDeleteExperience(e.id!)} className="text-sm text-red-400 hover:underline">{t("Excluir")}</button>
                       </div>
                     </div>
                   ))}
+                  {!loading && !loadError && experiences.every(e => e.type !== 'work') && <p className="text-sm text-gray-400">{t("Nenhuma experiência profissional cadastrada.")}</p>}
                 </div>
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-300 border-b border-gray-800 pb-2 mb-3">🎓 Histórico Acadêmico</h3>
+                <h3 className="text-base font-bold text-gray-300 border-b border-gray-800 pb-2 mb-3">{t("Formação acadêmica")}</h3>
                 <div className="flex flex-col gap-3">
                   {experiences.filter(e => e.type === 'education').map(e => (
-                    <div key={e.id} className="flex justify-between items-start bg-gray-800/30 border border-gray-800 p-4 rounded-xl">
+                    <div key={e.id} className="admin-experience-record flex justify-between items-start bg-gray-800/30 border border-gray-800 p-4 rounded-xl">
                       <div>
-                        <h4 className="font-semibold text-gray-200">{e.role}</h4>
-                        <p className="text-teal-400 text-sm mb-1">{e.company}</p>
-                        <p className="text-xs text-gray-500 mb-2">{e.period} (Ordem: {e.order_index})</p>
-                        {e.description && <p className="text-sm text-gray-400">{e.description}</p>}
+                        <h4 className="font-semibold text-gray-200">{isEnglish ? e.role_en || e.role : e.role}</h4>
+                        <p className="text-teal-400 text-sm mb-1">{isEnglish ? e.company_en || e.company : e.company}</p>
+                        <p className="text-xs text-gray-500 mb-2">{isEnglish ? e.period_en || e.period : e.period} {t("(Ordem:")} {e.order_index}{t(")")}</p>
+                        {e.description && <p className="text-sm text-gray-400">{isEnglish ? e.description_en || e.description : e.description}</p>}
                       </div>
                       <div className="flex gap-3 shrink-0 ml-4">
-                        <button onClick={() => startEditExperience(e)} className="text-sm text-blue-400 hover:underline">Editar</button>
-                        <button onClick={() => handleDeleteExperience(e.id!)} className="text-sm text-red-400 hover:underline">Excluir</button>
+                        <button onClick={() => startEditExperience(e)} className="text-sm text-blue-400 hover:underline">{t("Editar")}</button>
+                        <button onClick={() => handleDeleteExperience(e.id!)} className="text-sm text-red-400 hover:underline">{t("Excluir")}</button>
                       </div>
                     </div>
                   ))}
+                  {!loading && !loadError && experiences.every(e => e.type !== 'education') && <p className="text-sm text-gray-400">{t("Nenhuma formação acadêmica cadastrada.")}</p>}
                 </div>
               </div>
             </div>
@@ -1331,90 +1444,90 @@ export default function Admin() {
         {activeTab === 'settings' && (
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Configurações Gerais & Redes Sociais</h2>
-              {settingsMessage && <span className="text-sm text-teal-400">{settingsMessage}</span>}
+              <h2 className="text-xl font-bold">{t("Configurações gerais")}</h2>
+              <AdminNotice message={settingsMessage} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Profile Text (Bio) */}
               <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-1">Texto de Apresentação (Bio da Página Inicial)</label>
-                <textarea 
+                <label htmlFor="admin-control-20" className="block text-sm text-gray-400 mb-1">{t("Texto de Apresentação (Bio da Página Inicial)")}</label>
+                <textarea id="admin-control-20"
                   value={settings.about_me_text || ''}
                   onChange={e => setSettings({ ...settings, about_me_text: e.target.value })}
-                  placeholder="Escreva sua bio profissional curta que aparece no banner principal do site..."
+                  placeholder={t("Desenvolvo APIs, integrações e aplicações web, com foco em backend e experiência na construção de interfaces.")}
                   rows={4}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-1">Texto de apresentação em inglês</label>
-                <textarea
+                <label htmlFor="admin-control-21" className="block text-sm text-gray-400 mb-1">{t("Texto de apresentação em inglês")}</label>
+                <textarea id="admin-control-21"
                   value={settings.about_me_text_en || ''}
                   onChange={e => setSettings({ ...settings, about_me_text_en: e.target.value })}
-                  placeholder="Write the short professional bio shown on the English home page..."
+                  placeholder={t("I build APIs, integrations, and web applications, with a backend focus and experience building user interfaces.")}
                   rows={4}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Texto de Disponibilidade</label>
-                <select 
+                <label htmlFor="admin-control-22" className="block text-sm text-gray-400 mb-1">{t("Texto de Disponibilidade")}</label>
+                <select id="admin-control-22"
                   value={settings.availability_text || ''}
                   onChange={e => setSettings({ ...settings, availability_text: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10" 
                 >
-                  <option value="">Selecione uma opção...</option>
-                  <option value="Disponível para oportunidades Agora">Disponível para oportunidades Agora</option>
-                  <option value="Disponível para propostas mas não buscando ativamente">Disponível para propostas mas não buscando ativamente</option>
-                  <option value="Indisponível">Indisponível</option>
+                  <option value="">{t("Selecione uma opção...")}</option>
+                  <option value="Disponível para oportunidades Agora">{t("Disponível para oportunidades Agora")}</option>
+                  <option value="Disponível para propostas mas não buscando ativamente">{t("Disponível para propostas mas não buscando ativamente")}</option>
+                  <option value="Indisponível">{t("Indisponível")}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Texto de disponibilidade em inglês</label>
-                <input
+                <label htmlFor="admin-control-23" className="block text-sm text-gray-400 mb-1">{t("Texto de disponibilidade em inglês")}</label>
+                <input id="admin-control-23"
                   type="text"
                   value={settings.availability_text_en || ''}
                   onChange={e => setSettings({ ...settings, availability_text_en: e.target.value })}
-                  placeholder="Available for opportunities"
+                  placeholder={t("Available for opportunities")}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Status Profissional Atual</label>
-                <select 
+                <label htmlFor="admin-control-24" className="block text-sm text-gray-400 mb-1">{t("Status Profissional Atual")}</label>
+                <select id="admin-control-24"
                   value={settings.job_status_text || ''}
                   onChange={e => setSettings({ ...settings, job_status_text: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10" 
                 >
-                  <option value="">Selecione uma opção...</option>
-                  <option value="Estagiando">Estagiando</option>
-                  <option value="Trabalhando">Trabalhando</option>
-                  <option value="Freelancer">Freelancer</option>
-                  <option value="Desempregado">Desempregado</option>
+                  <option value="">{t("Selecione uma opção...")}</option>
+                  <option value="Estagiando">{t("Estagiando")}</option>
+                  <option value="Trabalhando">{t("Trabalhando")}</option>
+                  <option value="Freelancer">{t("Freelancer")}</option>
+                  <option value="Desempregado">{t("Desempregado")}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Status profissional em inglês</label>
-                <input
+                <label htmlFor="admin-control-25" className="block text-sm text-gray-400 mb-1">{t("Status profissional em inglês")}</label>
+                <input id="admin-control-25"
                   type="text"
                   value={settings.job_status_text_en || ''}
                   onChange={e => setSettings({ ...settings, job_status_text_en: e.target.value })}
-                  placeholder="Internship"
+                  placeholder={t("Internship")}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition h-10"
                 />
               </div>
 
               {/* Social URLs */}
-              <h3 className="md:col-span-2 text-sm font-semibold border-b border-gray-800 pb-1 mt-4 mb-1">🔗 Links Sociais & Contato</h3>
+              <h3 className="md:col-span-2 text-sm font-semibold border-b border-gray-800 pb-1 mt-4 mb-1">{t("Redes sociais e contato")}</h3>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1">URL do LinkedIn</label>
-                <input 
+                <label htmlFor="admin-control-26" className="block text-xs text-gray-400 mb-1">{t("URL do LinkedIn")}</label>
+                <input id="admin-control-26"
                   type="url" 
-                  placeholder="https://linkedin.com/in/usuario"
+                  placeholder={t("https://linkedin.com/in/usuario")}
                   value={settings.linkedin_url || ''}
                   onChange={e => setSettings({ ...settings, linkedin_url: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition"
@@ -1422,10 +1535,10 @@ export default function Admin() {
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1">URL do GitHub</label>
-                <input 
+                <label htmlFor="admin-control-27" className="block text-xs text-gray-400 mb-1">{t("URL do GitHub")}</label>
+                <input id="admin-control-27"
                   type="url" 
-                  placeholder="https://github.com/usuario"
+                  placeholder={t("https://github.com/usuario")}
                   value={settings.github_url || ''}
                   onChange={e => setSettings({ ...settings, github_url: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition"
@@ -1433,10 +1546,10 @@ export default function Admin() {
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1">WhatsApp Link / Contato Direto</label>
-                <input 
+                <label htmlFor="admin-control-28" className="block text-xs text-gray-400 mb-1">{t("WhatsApp Link / Contato Direto")}</label>
+                <input id="admin-control-28"
                   type="text" 
-                  placeholder="https://wa.me/55999999999"
+                  placeholder={t("https://wa.me/55999999999")}
                   value={settings.whatsapp_url || ''}
                   onChange={e => setSettings({ ...settings, whatsapp_url: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition"
@@ -1444,10 +1557,10 @@ export default function Admin() {
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1">E-mail Público</label>
-                <input 
+                <label htmlFor="admin-control-29" className="block text-xs text-gray-400 mb-1">{t("E-mail Público")}</label>
+                <input id="admin-control-29"
                   type="email" 
-                  placeholder="exemplo@email.com"
+                  placeholder={t("exemplo@email.com")}
                   value={settings.contact_email || ''}
                   onChange={e => setSettings({ ...settings, contact_email: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition"
@@ -1459,11 +1572,12 @@ export default function Admin() {
               onClick={handleSaveSettings}
               className="bg-blue-500 hover:bg-blue-600 px-6 py-2.5 rounded-lg text-sm font-semibold transition"
             >
-              Salvar Todas as Configurações
+              {t("Salvar Todas as Configurações")}
             </button>
           </div>
         )}
 
+        </fieldset>
       </section>
     </main>
   )

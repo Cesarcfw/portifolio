@@ -14,13 +14,17 @@ export class ApiError extends Error {
   }
 }
 
-async function getPublic(path: string) {
-  const res = await fetch(`${BASE_URL}${path}`)
+export async function readResponse(res: Response) {
+  if (res.status === 204 && res.ok) return {}
   const data = await res.json().catch(() => {
     throw new ApiError('API_INVALID_RESPONSE', 'Resposta inválida da API')
   })
-  if (!res.ok) throw new ApiError(data.code || 'INTERNAL_ERROR', data.error || 'Erro na API')
+  if (!res.ok || data?.error) throw new ApiError(data?.code || `HTTP_${res.status}`, data?.error || 'Não foi possível concluir a solicitação. Tente novamente.')
   return data
+}
+
+async function getPublic(path: string) {
+  return readResponse(await fetch(`${BASE_URL}${path}`))
 }
 
 // Projetos
@@ -56,7 +60,7 @@ export async function login(email: string, password: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function forgotPassword(email: string) {
@@ -65,7 +69,7 @@ export async function forgotPassword(email: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function resetPassword(token: string, newPassword: string) {
@@ -74,13 +78,13 @@ export async function resetPassword(token: string, newPassword: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, newPassword })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 // Settings
 export async function getSettings() {
   const res = await fetch(`${BASE_URL}/settings`)
-  return res.json()
+  return readResponse(res)
 }
 
 export async function updateSettings(token: string, settings: Record<string, string>) {
@@ -92,7 +96,7 @@ export async function updateSettings(token: string, settings: Record<string, str
     },
     body: JSON.stringify(settings)
   })
-  return res.json()
+  return readResponse(res)
 }
 
 interface ResumeUploadData {
@@ -110,7 +114,7 @@ export async function uploadResumePair(token: string, portuguese: ResumeUploadDa
     },
     body: JSON.stringify({ portuguese, english })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function uploadResumeCounterpart(token: string, resumeId: number, counterpart: ResumeUploadData) {
@@ -122,7 +126,7 @@ export async function uploadResumeCounterpart(token: string, resumeId: number, c
     },
     body: JSON.stringify(counterpart)
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function replaceResumeFile(token: string, resumeId: number, base64Data: string) {
@@ -134,7 +138,7 @@ export async function replaceResumeFile(token: string, resumeId: number, base64D
     },
     body: JSON.stringify({ base64Data })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function linkResumeCounterparts(token: string, portugueseId: number, englishId: number) {
@@ -146,7 +150,7 @@ export async function linkResumeCounterparts(token: string, portugueseId: number
     },
     body: JSON.stringify({ portugueseId, englishId })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function reorderResumePairs(token: string, pairIds: Array<number | string>) {
@@ -158,7 +162,7 @@ export async function reorderResumePairs(token: string, pairIds: Array<number | 
     },
     body: JSON.stringify({ pairIds })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function removeResumePair(token: string, pairId: number | string) {
@@ -166,7 +170,7 @@ export async function removeResumePair(token: string, pairId: number | string) {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function editResume(token: string, id: number, name: string, description: string, language: 'pt-BR' | 'en') {
@@ -178,7 +182,7 @@ export async function editResume(token: string, id: number, name: string, descri
     },
     body: JSON.stringify({ name, description, language })
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function removeResume(token: string, id: number) {
@@ -188,13 +192,13 @@ export async function removeResume(token: string, id: number) {
       Authorization: `Bearer ${token}`
     }
   })
-  return res.json()
+  return readResponse(res)
 }
 
 // Skills
 export async function getSkills() {
   const res = await fetch(`${BASE_URL}/skills`)
-  return res.json()
+  return readResponse(res)
 }
 
 export async function createSkill(token: string, data: { name: string, name_en?: string, category: string, category_en?: string, level?: number, color?: string }) {
@@ -206,7 +210,7 @@ export async function createSkill(token: string, data: { name: string, name_en?:
     },
     body: JSON.stringify(data)
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function updateSkill(token: string, id: number, data: { name: string, name_en?: string, category: string, category_en?: string, level?: number, color?: string }) {
@@ -218,7 +222,7 @@ export async function updateSkill(token: string, id: number, data: { name: strin
     },
     body: JSON.stringify(data)
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function removeSkill(token: string, id: number) {
@@ -228,13 +232,13 @@ export async function removeSkill(token: string, id: number) {
       Authorization: `Bearer ${token}`
     }
   })
-  return res.json()
+  return readResponse(res)
 }
 
 // Experiences
 export async function getExperiences() {
   const res = await fetch(`${BASE_URL}/experiences`)
-  return res.json()
+  return readResponse(res)
 }
 
 export async function createExperience(token: string, data: { company: string, company_en?: string, role: string, role_en?: string, period: string, period_en?: string, description?: string, description_en?: string, techs?: string, type?: string, order_index?: number }) {
@@ -246,7 +250,7 @@ export async function createExperience(token: string, data: { company: string, c
     },
     body: JSON.stringify(data)
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function updateExperience(token: string, id: number, data: { company: string, company_en?: string, role: string, role_en?: string, period: string, period_en?: string, description?: string, description_en?: string, techs?: string, type?: string, order_index?: number }) {
@@ -258,7 +262,7 @@ export async function updateExperience(token: string, id: number, data: { compan
     },
     body: JSON.stringify(data)
   })
-  return res.json()
+  return readResponse(res)
 }
 
 export async function removeExperience(token: string, id: number) {
@@ -268,5 +272,5 @@ export async function removeExperience(token: string, id: number) {
       Authorization: `Bearer ${token}`
     }
   })
-  return res.json()
+  return readResponse(res)
 }

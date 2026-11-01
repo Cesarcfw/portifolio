@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
-import { ApiError, getProjects, getGithubRepos } from '../services/api'
+import { getProjects, getGithubRepos } from '../services/api'
+import { useResource } from '../hooks/useResource'
+import ResourceStatus from '../components/ResourceStatus'
+import LocalizedText from '../components/LocalizedText'
+import { englishContent } from '../utils/contentTranslations'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface Project {
@@ -43,85 +46,13 @@ function StatusBadge({ status, isEnglish }: { status: string; isEnglish: boolean
 
 export default function Projects() {
   const { isEnglish } = useLanguage()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [repos, setRepos] = useState<Repo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [proj, rep] = await Promise.all([
-          getProjects(),
-          getGithubRepos()
-        ])
-
-        setProjects(proj || [])
-        setRepos(rep || [])
-      } catch (err) {
-        console.error("Erro ao carregar projetos:", err)
-        setError(err instanceof ApiError ? err.code : 'NETWORK_ERROR')
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        window.location.reload()
-      }, 50000)
-      return () => clearTimeout(timer)
-    }
-  }, [error])
-
-  if (error) {
-    const isGithubError = error.startsWith('GITHUB_')
-    const isNetworkError = error === 'NETWORK_ERROR'
-    return (
-      <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="relative mb-8 flex justify-center">
-          {/* 
-            ============== TROCAR A ANIMAÇÃO AQUI ==============
-            Quando você quiser trocar a animação, basta alterar
-            o link abaixo dentro do 'src="..."' pelo link da sua imagem.
-            ====================================================
-          */}
-          <img 
-            src="https://media.tenor.com/lcDEp7V0E6wAAAAC/cryptoadz-coffee-time.gif" 
-            alt={isEnglish ? 'Service unavailable' : 'Serviço indisponível'}
-            className="w-32 h-32 rounded-xl object-cover shadow-lg pixelated"
-            style={{ imageRendering: 'pixelated' }}
-          />
-        </div>
-        
-        <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-          {isGithubError
-            ? (isEnglish ? 'GitHub data is temporarily unavailable' : 'Dados do GitHub temporariamente indisponíveis')
-            : isNetworkError
-              ? (isEnglish ? 'Unable to reach the server' : 'Não foi possível acessar o servidor')
-              : (isEnglish ? 'Data is temporarily unavailable' : 'Dados temporariamente indisponíveis')}
-        </h1>
-        
-        <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
-          {isEnglish ? 'Please try again in a moment.' : 'Tente novamente em alguns instantes.'}
-        </p>
-        {error !== 'NETWORK_ERROR' && <p className="text-xs text-gray-500 mb-6">{error}</p>}
-        
-        <button 
-          onClick={() => window.location.reload()} 
-          className="bg-blue-500 hover:bg-blue-600 px-8 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
-        >
-          {isEnglish ? 'Try again' : 'Tentar novamente'}
-        </button>
-      </main>
-    )
-  }
+  const projectResource = useResource<Project[]>(getProjects, [])
+  const repoResource = useResource<Repo[]>(getGithubRepos, [])
+  const { data: projects } = projectResource
+  const { data: repos } = repoResource
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main id="main-content" className="portfolio-page projects-page min-h-screen bg-gray-950 text-white">
 
       {/* Header */}
       <section className="max-w-5xl mx-auto px-6 py-16">
@@ -132,15 +63,16 @@ export default function Projects() {
       {/* Projetos do banco */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'Professional projects' : 'Projetos profissionais'}</h2>
-        {loading ? (
+        {projectResource.error ? <ResourceStatus {...projectResource} /> : projectResource.loading ? (
           <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {!projects.length && <ResourceStatus {...projectResource} empty />}
             {projects.map(project => (
               <div key={project.id} className="bg-gray-900 rounded-xl p-6 border border-gray-800 hover:border-blue-500 transition">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-semibold">{isEnglish ? (project.title_en || project.title) : project.title}</h3>
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap min-w-0 items-center gap-2">
+                    <h3 className="text-xl font-semibold"><LocalizedText original={project.title} english={project.title_en} /></h3>
                     <StatusBadge status={project.status} isEnglish={isEnglish} />
                   </div>
                   {project.featured && (
@@ -149,7 +81,7 @@ export default function Projects() {
                     </span>
                   )}
                 </div>
-                <p className="text-gray-400 text-sm mb-4">{isEnglish ? (project.description_en || project.description) : project.description}</p>
+                <p className="text-gray-400 text-sm mb-4"><LocalizedText original={project.description} english={project.description_en} /></p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {project.tech_stack?.map((tech: string) => (
                     <span key={tech} className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-full">
@@ -178,16 +110,17 @@ export default function Projects() {
       {/* Repositórios do GitHub */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
         <h2 className="text-2xl font-semibold mb-6">{isEnglish ? 'GitHub repositories' : 'Repositórios no GitHub'}</h2>
-        {loading ? (
+        {repoResource.error ? <ResourceStatus {...repoResource} /> : repoResource.loading ? (
           <p className="text-gray-400">{isEnglish ? 'Loading...' : 'Carregando...'}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {!repos.length && <ResourceStatus {...repoResource} empty />}
             {repos.map(repo => (
               <a key={repo.id} href={repo.url} target="_blank" rel="noreferrer"
                 className="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-blue-500 transition block">
                 <h3 className="font-semibold mb-1">{repo.name}</h3>
                 <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                  {repo.description || (isEnglish ? 'No description' : 'Sem descrição')}
+                  {(isEnglish ? englishContent(repo.description) || repo.description : repo.description) || (isEnglish ? 'No description' : 'Sem descrição')}
                 </p>
                 <div className="flex items-center gap-3 text-xs text-gray-500">
                   {repo.language && <span>⚡ {repo.language}</span>}
